@@ -49,4 +49,3 @@ def find(list, key):
     if callable(key):
         return next(x for x in list if key(x))
     return next(x for x in list if key == x)
-    

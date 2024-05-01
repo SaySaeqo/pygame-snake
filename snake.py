@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from decisionfunctions import control_snake, based_on_keys
 import asyncio
 from asyncclock import Clock
-from network import *
+from MyPodSixNet import start_server, connect_to_server, NetworkListener, NetworkAddress
 import json
 from math import floor
 from utils import *
@@ -502,5 +502,4 @@ async def main():
         pause(end_phrase)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
