@@ -47,7 +47,7 @@ async def connect_to_server(address: NetworkAddress, network_listener_factory = 
     # pamiętać o tym tutaj
     connection.writer.close()
 
-def start_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
+async def start_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
     server = Server(address, network_listener_factory)
-    server.start()
+    await server.start()
     return server

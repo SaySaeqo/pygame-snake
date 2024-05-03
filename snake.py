@@ -7,11 +7,14 @@ from dataclasses import dataclass, field
 from decisionfunctions import control_snake, based_on_keys
 import asyncio
 from asyncclock import Clock
-from MyPodSixNet import start_server, connect_to_server, NetworkListener, NetworkAddress
+from MyPodSixNet import start_server, connect_to_server, NetworkListener, NetworkAddress, Server, EndPoint
 import json
 from math import floor
 from utils import *
 from icecream import ic
+import logging
+
+log = logging.getLogger(__name__)
 
 @dataclass
 class Options:
@@ -44,6 +47,13 @@ class Options:
             time_limit=data["time_limit"],
             rotation_power=data["rotation_power"]
         )
+    
+    def copy_values(self, other):
+        self.fps = other.fps
+        self.diameter = other.diameter
+        self.speed = other.speed
+        self.time_limit = other.time_limit
+        self.rotation_power = other.rotation_power
 
 
 def initialize_players(diameter, number):
@@ -127,11 +137,11 @@ def draw_board(state: GameState):
             wall.draw()
 
 
-async def only_draw_board(state: GameState):
+async def only_draw_board(state: GameState, fps: int):
     clock = Clock()
     while True:
         draw_board(state)
-        await clock.tick(60)
+        await clock.tick(fps)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
@@ -384,6 +394,12 @@ class SnakeMenu:
                             self.network.host_address = NetworkAddress(parts[0], int(parts[1]))
                         return
 
+def show_scores(scores, names):
+    end_phrase = "GAME OVER\n"
+    end_phrase += f"TOTAL SCORE: {sum(scores)}\n"
+    for idx, score in enumerate(scores):
+        end_phrase += f"{names[idx]}: {score}\n"
+    pause(end_phrase)
 
 async def main():
     snake_menu = SnakeMenu()
@@ -402,79 +418,148 @@ async def main():
             if snake_menu.network.is_host:
                 # asynchroniczne menu, które zbiera graczy i pozwala na kliknięcie start
 
+                class ServerListener(NetworkListener):
+                    def __init__(self, address: NetworkAddress, lobby_state: LobbyState, game_state: GameState) -> None:
+                        super().__init__(address)
+                        self.lobby_state = lobby_state
+                        self.game_state = game_state
+
+                    def Network_host_address(self, data: str):
+                        self.lobby_state.host_address = data
+                        for player in filter(lambda x: x[1].ip == "localhost", self.lobby_state.players):
+                            player[1] = data
+
+                    def Network_names(self, names):
+                        self.lobby_state.players += [(n, self.address) for n in names]
+
+                    def Network_decisions(self, data: tuple[str, int]):
+                        for name, decision in data:
+                            idx = find_index(self.lobby_state.players, (name, self.address))
+                            self.game_state.players[idx].decision = decision
+                        
+                    def Network_disconnected(self, data):
+                        for player in [p for p in lst.players if p[1] == self.address]:
+                            self.lobby_state.players.remove(player)
+
                 my_address = NetworkAddress(port=1111)
                 lst = LobbyState(
-                    [Player(snake_menu.names[i], my_address) for i in range(snake_menu.number_of_players)],
+                    [(snake_menu.names[i], my_address) for i in range(snake_menu.number_of_players)],
                       my_address)
                 game_state = GameState()
 
+                server = await start_server(my_address, lambda address: ServerListener(address, lst, game_state))
 
+                async def notify_about_lobby_state(server: Server, lst: LobbyState):
+                    last_message = None
+                    while True:
+                        data = lst.to_json()
+                        if last_message != data:
+                            server.send(data, action="lobby_state")
+                            await server.pump()
+                            last_message = data
+                        await asyncio.sleep(0.1)
+                        
 
-                def lobby_dataflow(data: bytes, who: NetworkAddress):
-                    nonlocal lst
-                    nonlocal my_address
-                    ic (data)
-                    data = bytes2simple(data)
-                    host_ip = data.pop(0)
-                    for player in filter(lambda x: x.address.ip == "localhost", lst.players):
-                        player.address = host_ip
-                        my_address.ip = host_ip
-                    if not find(lst.players, lambda x: x.address == who):
-                        for name in data:
-                            lst.players.append(Player(name, who))
-                    return lst.to_bytes()
-                
-                def get_initial_data(who: NetworkAddress):
-                    return lst.to_bytes()
-                
-                lobby_phase = NetworkPhase(lobby_dataflow, network_room(lst))
+                await first_completed(network_room(lst), notify_about_lobby_state(server, lst))
 
-                def game_dataflow(data: bytes, who: NetworkAddress):
-                    nonlocal game_state
-                    return game_state.to_bytes()
-                
-                async def game_main():
-                    nonlocal game_state, options
-                    game_state.players = initialize_players(options.diameter, len(lst.players))
+                server.send(options.to_json(), action="options")
+                await server.pump()
+                server.serving_task.cancel()
+                game_state.players = initialize_players(options.diameter, len(lst.players))
 
+                async def notify_about_game_state(server: Server, game_state: GameState):
+                    last_message = None
+                    while True:
+                        data = game_state.to_json()
+                        if last_message != data:
+                            server.send(data, action="game_state")
+                            await server.pump()
+                            last_message = data
+                        await asyncio.sleep(0.1)
+
+                async def game_main(game_state: GameState, options: Options):
                     async with asyncio.TaskGroup() as tg:
                         for snake, func in zip(game_state.players[:snake_menu.number_of_players], snake_menu.control_functions):
                             tg.create_task(control_snake(func, snake, options.fps))
                         tg.create_task(run_game(game_state, options))
 
-                game_phase = NetworkPhase(game_dataflow, game_main())
+                await first_completed(notify_about_game_state(server, game_state), game_main(game_state, options))
 
-                def after_disconnected(who: NetworkAddress):
-                    nonlocal lst
-                    for player in [p for p in lst.players if p.address == who]:
-                            lst.players.remove(player)
-                
-                await run_server(my_address, [lobby_phase, game_phase], after_disconnected, get_initial_data)
+                server.send(game_state.scores, action="game_over")
+                await server.pump()
 
-                # DALEJ NIE DZIAŁA AAAAAA TODO
-                # odpal i sprawdź błędu, trochę pogłówkuj, przestudiuj workflow, zrób testy automatyczne dla network.py
+                show_scores(game_state.scores, map(lst.players, lambda x: x[0]))
+
+                del server
 
                 continue
             else:
                 # Łączy się z serwerem i wyświetla dane w zamian
+
+                class ClientListener(NetworkListener):
+                    def __init__(self, address: NetworkAddress, lobby_state: LobbyState, game_state: GameState, options: Options) -> None:
+                        super().__init__(address)
+                        self.lobby_state = lobby_state
+                        self.game_state = game_state
+                        self.options = options
+
+                    def Network_lobby_state(self, data):
+                        self.lobby_state.copy_values(LobbyState.from_json(data))
+
+                    def Network_options(self, data):
+                        self.options.copy_values(Options.from_json(data))
+                        self.lobby_state.game_started = True
+
+                    def Network_game_state(self, data):
+                        self.game_state.copy_values(GameState.from_json(data))
+                        self.lobby_state.game_started = True
+
+                    def Network_game_over(self, data):
+                        self.game_state.scores = data
+                        self.lobby_state.game_started = False
+
                 lst = LobbyState([], snake_menu.network.host_address)
                 game_state = GameState()
 
-                def lobby_dataflow(data: bytes):
-                    nonlocal lst
-                    lst.copy_values(LobbyState.from_bytes(data))
-                    return simple2bytes([snake_menu.network.host_address.ip] + [name for name in snake_menu.names[:snake_menu.number_of_players]])
+                try:
+                    client = await first_completed(
+                        connect_to_server(snake_menu.network.host_address, lambda address: ClientListener(address, lst, game_state, options)),
+                        wait_screen("Connecting to server")
+                        )
+                    if not isinstance(client, EndPoint):
+                        log.info("Connection aborted")
+                        return
+                except OSError as e:
+                    log.error(e)
+                    log.info("Could not connect to the server")
+                    return
+                log.info("Connected to the server")
 
-                lobby_phase = NetworkPhase(lobby_dataflow, network_room(lst))
 
-                def game_dataflow(data: bytes):
-                    nonlocal game_state
-                    game_state.copy_values(GameState.from_bytes(data))
-                    return b"."
-                
-                game_phase = NetworkPhase(game_dataflow, only_draw_board(game_state))
+                client.send(snake_menu.names, action="names")
+                await client.pump()
 
-                await run_client(snake_menu.network.host_address, [lobby_phase, game_phase], wait_screen("Connecting to server"))
+                async def check_for_start(lst: LobbyState):
+                    while not lst.game_started:
+                        await asyncio.sleep(0.1)
+
+                await first_completed(check_for_start(lst), network_room(lst))
+
+                if not lst.game_started:
+                    client.writer.close()
+                    del client
+                    continue
+
+                async def check_for_end(lst: LobbyState):
+                    while lst.game_started:
+                        await asyncio.sleep(0.1)
+
+                await first_completed(check_for_end(lst), only_draw_board(game_state, options.fps))
+
+                show_scores(game_state.scores, map(lst.players, lambda x: x[0]))
+
+                client.writer.close()
+                del client
 
                 continue
 
@@ -494,12 +579,7 @@ async def main():
             names_combined = " + ".join(sorted(snake_menu.names[:snake_menu.number_of_players]))
             file.write(f"{names_combined}: {sum(scores)}\n")
 
-        # show scores
-        end_phrase = "GAME OVER\n"
-        end_phrase += f"TOTAL SCORE: {sum(scores)}\n"
-        for idx, score in enumerate(scores):
-            end_phrase += f"{snake_menu.names[idx]}: {score}\n"
-        pause(end_phrase)
+        show_scores(scores, snake_menu.names)
 
 if __name__ == "__main__":
     asyncio.run(main())

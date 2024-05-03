@@ -6,10 +6,10 @@ from utils import unique
 import functools
 from screeninfo import get_monitors
 import asyncclock
-from network import NetworkAddress
-from network import *
 import json
 from math import floor
+from MyPodSixNet import NetworkAddress
+from dataclasses import dataclass
 
 WINDOWS_FUNCTIONS_FPS = 10
 
@@ -280,7 +280,7 @@ def leaderboard(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_k
 
 @dataclass
 class LobbyState:
-    players: list[Player]
+    players: list[(str, NetworkAddress)]
     host_address: NetworkAddress
     game_started: bool = False
 

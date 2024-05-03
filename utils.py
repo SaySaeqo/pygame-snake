@@ -49,3 +49,8 @@ def find(list, key):
     if callable(key):
         return next(x for x in list if key(x))
     return next(x for x in list if key == x)
+
+def find_index(list, key):
+    if callable(key):
+        return next(i for i, x in enumerate(list) if key(x))
+    return next(i for i, x in enumerate(list) if key == x)
