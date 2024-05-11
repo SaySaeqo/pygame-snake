@@ -1,7 +1,7 @@
 import asyncio
-from MyPodSixNet import NetworkAddress
+from .helpers import NetworkAddress
 from icecream import ic
-from endpoint import EndPoint
+from .endpoint import EndPoint
 
 
 class Server:
@@ -17,13 +17,13 @@ class Server:
             del conn
         self.serving_task.cancel()
 
-    async def __await__(self):
+    def __await__(self):
         if self.serving_task:
-            await self.serving_task
+            yield from self.serving_task.__await__()
         else:
-            ic("Server not started yet.")
+            raise RuntimeError("Server not started yet.")
         while self.connections:
-            await asyncio.sleep(0)
+            yield from asyncio.sleep(0.1).__await__()
 
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):

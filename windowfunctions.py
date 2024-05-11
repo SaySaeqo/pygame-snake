@@ -8,7 +8,7 @@ from screeninfo import get_monitors
 import asyncclock
 import json
 from math import floor
-from MyPodSixNet import NetworkAddress
+import MyPodSixNet.tobeused as net
 from dataclasses import dataclass
 
 WINDOWS_FUNCTIONS_FPS = 10
@@ -280,13 +280,13 @@ def leaderboard(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_k
 
 @dataclass
 class LobbyState:
-    players: list[(str, NetworkAddress)]
-    host_address: NetworkAddress
+    players: list[(str, net.NetworkAddress)]
+    host_address: net.NetworkAddress
     game_started: bool = False
 
     def to_json(self):
         return {
-            "players": [player.to_json() for player in self.players],
+            "players": self.players,
             "host_address": self.host_address.to_json() if self.host_address else None,
             "game_started": self.game_started
         }
@@ -294,8 +294,8 @@ class LobbyState:
     @classmethod
     def from_json(cls, data):
         return cls(
-            players=[Player.from_json(player) for player in data["players"]],
-            host_address=NetworkAddress.from_json(data["host_address"]) if data["host_address"] else None,
+            players=data["players"],
+            host_address=net.NetworkAddress.from_json(data["host_address"]) if data["host_address"] else None,
             game_started=data.get("game_started", False)
         )   
     
@@ -334,7 +334,7 @@ async def network_room(state: LobbyState):
 
         players_phrase = ""
         for player in state.players:
-            players_phrase += f"{player.name} ({player.address.ip}:{player.address.port})\n"
+            players_phrase += f"{player[0]} ({player[1].ip}:{player[1].port})\n"
 
         players_sur = text2surface(players_phrase)
         merge_into_board(players_sur, Align.TOP, offset)

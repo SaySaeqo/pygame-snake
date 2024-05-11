@@ -1,5 +1,5 @@
 import asyncio
-from MyPodSixNet import NetworkAddress
+from .helpers import NetworkAddress
 from icecream import ic
 from json import dumps, loads
 
@@ -25,11 +25,11 @@ class EndPoint:
         if self.receiver_task:
             self.receiver_task.cancel()
 
-    async def __await__(self):
+    def __await__(self):
         if self.receiver_task:
-            await self.receiver_task
+            return self.receiver_task.__await__()
         else:
-            ic("Endpoint not started yet.")
+            raise RuntimeError("Endpoint not started yet.")
 
     def start_listening(self):
         try:
@@ -41,7 +41,8 @@ class EndPoint:
     async def receiver(self):
         try:
             while True:
-                data = await self.reader.readuntil(self.data_end)[:-(len(self.data_end))]
+                data = await self.reader.readuntil(self.data_end)
+                data = data[:-len(self.data_end)]  
                 data = loads(data)
                 await self.recqueue.put(data)
         except asyncio.CancelledError as cancelledError:

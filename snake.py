@@ -7,10 +7,10 @@ from dataclasses import dataclass, field
 from decisionfunctions import control_snake, based_on_keys
 import asyncio
 from asyncclock import Clock
-from MyPodSixNet import start_server, connect_to_server, NetworkListener, NetworkAddress, Server, EndPoint
+import MyPodSixNet as net 
 import json
 from math import floor
-from utils import *
+from utils import find_index, first_completed, find, unique
 from icecream import ic
 import logging
 
@@ -226,7 +226,7 @@ async def run_game(st: GameState, options=Options()):
             # with walls
             for wall in st.walls:
                 if wall.is_colliding_with(player):
-                    if st.weird_walking_event_timer == st.wall_walking_event_timer + 10:
+                    if st.weird_walking_event_timer == st.wall_walking_event_timer + 10: #TODO czy to aby na pewno działa?
                         pygame.mixer.Sound("crush.mp3").play(maxtime=1000)
                         st.walls.remove(wall)
                     else:
@@ -282,7 +282,7 @@ class SnakeMenu:
     class NetworkData:
         is_host: bool = True
         is_active: bool = False
-        host_address: NetworkAddress = field(default_factory=lambda: NetworkAddress("localhost", 1234))
+        host_address: net.NetworkAddress = field(default_factory=lambda: net.NetworkAddress("localhost", 1234))
 
     
 
@@ -391,7 +391,7 @@ class SnakeMenu:
                         if host_address_phrase:
                             separator = ":" if ":" in host_address_phrase else ";"
                             parts = host_address_phrase.split(separator)
-                            self.network.host_address = NetworkAddress(parts[0], int(parts[1]))
+                            self.network.host_address = net.NetworkAddress(parts[0], int(parts[1]))
                         return
 
 def show_scores(scores, names):
@@ -418,8 +418,8 @@ async def main():
             if snake_menu.network.is_host:
                 # asynchroniczne menu, które zbiera graczy i pozwala na kliknięcie start
 
-                class ServerListener(NetworkListener):
-                    def __init__(self, address: NetworkAddress, lobby_state: LobbyState, game_state: GameState) -> None:
+                class ServerListener(net.NetworkListener):
+                    def __init__(self, address: net.NetworkAddress, lobby_state: LobbyState, game_state: GameState) -> None:
                         super().__init__(address)
                         self.lobby_state = lobby_state
                         self.game_state = game_state
@@ -441,15 +441,15 @@ async def main():
                         for player in [p for p in lst.players if p[1] == self.address]:
                             self.lobby_state.players.remove(player)
 
-                my_address = NetworkAddress(port=1111)
+                my_address = net.NetworkAddress(port=1111)
                 lst = LobbyState(
                     [(snake_menu.names[i], my_address) for i in range(snake_menu.number_of_players)],
                       my_address)
                 game_state = GameState()
 
-                server = await start_server(my_address, lambda address: ServerListener(address, lst, game_state))
+                server = await net.start_server(my_address, lambda address: ServerListener(address, lst, game_state))
 
-                async def notify_about_lobby_state(server: Server, lst: LobbyState):
+                async def notify_about_lobby_state(server: net.Server, lst: LobbyState):
                     last_message = None
                     while True:
                         data = lst.to_json()
@@ -467,7 +467,7 @@ async def main():
                 server.serving_task.cancel()
                 game_state.players = initialize_players(options.diameter, len(lst.players))
 
-                async def notify_about_game_state(server: Server, game_state: GameState):
+                async def notify_about_game_state(server: net.Server, game_state: GameState):
                     last_message = None
                     while True:
                         data = game_state.to_json()
@@ -496,8 +496,8 @@ async def main():
             else:
                 # Łączy się z serwerem i wyświetla dane w zamian
 
-                class ClientListener(NetworkListener):
-                    def __init__(self, address: NetworkAddress, lobby_state: LobbyState, game_state: GameState, options: Options) -> None:
+                class ClientListener(net.NetworkListener):
+                    def __init__(self, address: net.NetworkAddress, lobby_state: LobbyState, game_state: GameState, options: Options) -> None:
                         super().__init__(address)
                         self.lobby_state = lobby_state
                         self.game_state = game_state
@@ -523,10 +523,10 @@ async def main():
 
                 try:
                     client = await first_completed(
-                        connect_to_server(snake_menu.network.host_address, lambda address: ClientListener(address, lst, game_state, options)),
+                        net.connect_to_server(snake_menu.network.host_address, lambda address: ClientListener(address, lst, game_state, options)),
                         wait_screen("Connecting to server")
                         )
-                    if not isinstance(client, EndPoint):
+                    if not isinstance(client, net.EndPoint):
                         log.info("Connection aborted")
                         return
                 except OSError as e:
@@ -537,6 +537,7 @@ async def main():
 
 
                 client.send(snake_menu.names, action="names")
+                client.send(snake_menu.network.host_address.to_json(), action="host_address")
                 await client.pump()
 
                 async def check_for_start(lst: LobbyState):
