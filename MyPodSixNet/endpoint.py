@@ -1,14 +1,15 @@
 import asyncio
-from .helpers import NetworkAddress
+from helpers import NetworkAddress
 from icecream import ic
 from json import dumps, loads
 
-def till_empty(queue: asyncio.Queue):
+def pop_till_empty(queue: asyncio.Queue):
     while not queue.empty():
         yield queue.get_nowait()
 
+END_SEQ = b"\0---\0"
+
 class EndPoint:
-    data_end = b"\0---\0"
 
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, network_listener_factory):
         self.reader = reader
@@ -22,6 +23,10 @@ class EndPoint:
         self.send(action="connected")
 
     def __del__(self):
+        self.stop_listening()
+        self.writer.close()
+
+    def stop_listening(self):
         if self.receiver_task:
             self.receiver_task.cancel()
 
@@ -36,13 +41,13 @@ class EndPoint:
             self.receiver_task = asyncio.create_task(self.receiver())
         except ConnectionError as connectionError:
             ic(self.address, connectionError)
-            self.__del__()
+            self.stop_listening()
 
     async def receiver(self):
         try:
             while True:
-                data = await self.reader.readuntil(self.data_end)
-                data = data[:-len(self.data_end)]  
+                data = await self.reader.readuntil(END_SEQ)
+                data = data[:-len(END_SEQ)]  
                 data = loads(data)
                 await self.recqueue.put(data)
         except asyncio.CancelledError as cancelledError:
@@ -57,10 +62,10 @@ class EndPoint:
 
     async def pump(self):
         # empty the sendqueue
-        for data in till_empty(self.sendqueue):
-            self.writer.write(dumps(data).encode() + self.data_end)
+        for data in pop_till_empty(self.sendqueue):
+            self.writer.write(dumps(data).encode() + END_SEQ)
         await self.writer.drain()
 
         # empty the recqueue
-        for data in till_empty(self.recqueue):
+        for data in pop_till_empty(self.recqueue):
             [getattr(self.network_listener, n)(data["data"]) for n in ("Network_" + data["action"], "Network") if hasattr(self.network_listener, n)]

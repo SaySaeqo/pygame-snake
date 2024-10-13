@@ -1,7 +1,7 @@
 import asyncio
-from .helpers import NetworkAddress
+from helpers import NetworkAddress
 from icecream import ic
-from .endpoint import EndPoint
+from endpoint import EndPoint
 
 
 class Server:
@@ -26,6 +26,11 @@ class Server:
             yield from asyncio.sleep(0.1).__await__()
 
 
+    async def start(self):
+        server = await asyncio.start_server(self.handle_client, self.address.ip, self.address.port)
+
+        self.serving_task = asyncio.create_task(server.serve_forever())
+
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         connection = EndPoint(reader, writer, network_listener_factory=self.network_listener_factory)
 
@@ -33,16 +38,7 @@ class Server:
         self.connections[connection.address] = connection
 
         await connection
-        writer.close()
-
         del self.connections[connection.address]
-        
-        
-
-    async def start(self):
-        server = await asyncio.start_server(self.handle_client, self.address.ip, self.address.port)
-
-        self.serving_task = asyncio.create_task(server.serve_forever())
 
     def send(self, data, to: NetworkAddress = None, action = "default"):
         if to is None:

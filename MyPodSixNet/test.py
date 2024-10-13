@@ -2,7 +2,7 @@ import unittest
 import logging
 from endpoint import EndPoint
 from server import Server
-from helpers import NetworkListener, NetworkAddress
+from helpers import *
 from tobeused import connect_to_server, start_server
 from time import time, sleep
 
