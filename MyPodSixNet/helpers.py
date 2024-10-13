@@ -24,21 +24,18 @@ class NetworkAddress:
         return cls(data["ip"], int(data["port"]))
     
 class NetworkListener:
-    def __init__(self, address: NetworkAddress) -> None:
+    def __init__(self, address: NetworkAddress, connection) -> None:
         self.address = address
+        self.conn = connection
 
     def Network_default(self, data):
-        log.info("Event 'default'")
-        ic(self.address, data)
+        log.info("Event 'default' from" + str(self.address))
 
     def Network(self, data):
-        log.info("Network")
-        ic(self.address, data)
+        log.info("Network from" + str(self.address))
 
     def Network_connected(self, data):
-        log.info("Connected")
-        ic(self.address, data)
+        log.info("Connected to " + str(self.address))
 
     def Network_disconnected(self, data):
-        log.info("Disconnected")
-        ic(self.address, data)
+        log.info("Disconnected from" + str(self.address))

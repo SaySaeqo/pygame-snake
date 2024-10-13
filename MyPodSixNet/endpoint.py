@@ -18,13 +18,17 @@ class EndPoint:
         self.sendqueue: asyncio.Queue[dict] = asyncio.Queue()
         self.recqueue: asyncio.Queue[dict] = asyncio.Queue()
         self.receiver_task = None
-        self.network_listener = network_listener_factory(self.address)
+        self.network_listener = network_listener_factory(self.address, self)
 
         self.send(action="connected")
 
     def __del__(self):
         self.stop_listening()
-        self.writer.close()
+        try:
+            self.writer.close()
+        except RuntimeError as runtimeError:
+            pass
+
 
     def stop_listening(self):
         if self.receiver_task:
@@ -51,7 +55,7 @@ class EndPoint:
                 data = loads(data)
                 await self.recqueue.put(data)
         except asyncio.CancelledError as cancelledError:
-            self.send(action="disconnected")
+            await self.send_now(action="disconnected")
             raise cancelledError
 
     def send(self, data = None, action: str = "default"):
@@ -59,6 +63,13 @@ class EndPoint:
             "action": action,
             "data": data
         })
+
+    async def send_now(self, data = None, action: str = "default"):
+        self.writer.write(dumps({
+            "action": action,
+            "data": data
+        }).encode() + END_SEQ)
+        await self.writer.drain()
 
     async def pump(self):
         # empty the sendqueue

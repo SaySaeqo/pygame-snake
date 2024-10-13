@@ -5,6 +5,7 @@ from server import Server
 from helpers import *
 from tobeused import connect_to_server, start_server
 from time import time, sleep
+import asyncio
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -18,7 +19,7 @@ class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.fail("Expected OSError")
 
 class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
-    def setUp(self):
+    async def mySetUp(self):
         self.outgoing = [
             {"action": "hello", "data": {"a": 321, "b": [2, 3, 4], "c": ["afw", "wafF", "aa", "weEEW", "w234r"], "d": ["x"] * 256}},
             {"action": "hello", "data": [454, 35, 43, 543, "aabv"]},
@@ -27,69 +28,82 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         ]
         self.count = len(self.outgoing)
         self.lengths = [len(data['data']) for data in self.outgoing]
+
+        class TesterData:
+            def __init__(self):
+                self.received = []
+                self.count = 0
+                self.connected = False
+
+        self.serverTester_data = serverData = TesterData()
+        self.endpointTester_data = endpointData = TesterData()
         
-        class ServerChannel(Channel):
-            def Network_hello(self, data):
-                self._server.received.append(data)
-                self._server.count += 1
-                self.Send({"action": "gotit", "data": "Yeah, we got it: " + str(len(data['data'])) + " elements"})
-        
-        class TestEndPoint(EndPoint):
-            received = []
-            connected = False
-            count = 0
-            
+        class ServerTester(NetworkListener):
             def Network_connected(self, data):
-                self.connected = True
+                serverData.connected = True
+
+            def Network_hello(self, data):
+                serverData.received.append(data)
+                serverData.count += 1
+                self.conn.send("Yeah, we got it: " + str(len(data)) + " elements", "gotit")
+
+            def Network_disconnected(self, data):
+                serverData.connected = False
+        
+        class EndPointTester(NetworkListener):
+            def Network_connected(self, data):
+                endpointData.connected = True
             
             def Network_gotit(self, data):
-                self.received.append(data)
-                self.count += 1
-                
+                endpointData.received.append(data)
+                endpointData.count += 1
+
+            def Network_disconnected(self, data):
+                endpointData.connected = False
         
-        class TestServer(Server):
-            connected = False
-            received = []
-            count = 0
-            
-            def Connected(self, channel, addr):
-                self.connected = True
-        
-        self.server = TestServer(channelClass=ServerChannel, localaddr=("127.0.0.1", 31426))
-        self.endpoint = TestEndPoint(("127.0.0.1", 31426))
+        server_adress = NetworkAddress("localhost", 31426)
+        self.server = await start_server(server_adress, lambda address, conn: ServerTester(address, conn))
+        self.endpoint = await connect_to_server(server_adress, lambda address, conn: EndPointTester(address, conn))
     
-    def runTest(self):
-        self.endpoint.DoConnect()
+    async def runTest(self):
+        await self.mySetUp()
+        self.server: Server
+        self.endpoint: EndPoint
         for o in self.outgoing:
-            self.endpoint.Send(o)
-        
+            self.endpoint.send(o["data"], o["action"])
         
         for x in range(50):
-            self.server.Pump()
-            self.endpoint.Pump()
+            await self.server.pump()
+            await self.endpoint.pump()
             
             # see if what we receive from the server is what we expect
-            for r in self.server.received:
-                self.assertTrue(r == self.outgoing.pop(0))
-            self.server.received = []
+            for r in self.serverTester_data.received:
+                expected = self.outgoing.pop(0)["data"]
+                self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
+            self.serverTester_data.received = []
             
             # see if what we receive from the client is what we expect
-            for r in self.endpoint.received:
-                self.assertTrue(r['data'] == "Yeah, we got it: %d elements" % self.lengths.pop(0))
-            self.endpoint.received = []
+            for r in self.endpointTester_data.received:
+                expected = "Yeah, we got it: %d elements" % self.lengths.pop(0)
+                self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
+            self.endpointTester_data.received = []
             
-            sleep(0.001)
+            await asyncio.sleep(0.001)
         
-        self.assertTrue(self.server.connected, "Server is not connected")
-        self.assertTrue(self.endpoint.connected, "Endpoint is not connected")
-        
-        self.assertTrue(self.server.count == self.count, "Didn't receive the right number of messages")
-        self.assertTrue(self.endpoint.count == self.count, "Didn't receive the right number of messages")
-        
-        self.endpoint.Close()
-        
+        self.assertTrue(self.serverTester_data.connected, "Server is not connected")
+        self.assertTrue(self.endpointTester_data.connected, "Endpoint is not connected")
+
+        self.assertTrue(self.serverTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.serverTester_data.count}")
+        self.assertTrue(self.endpointTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.endpointTester_data.count}")   
+
+        self.endpoint.stop_listening()
+        await asyncio.sleep(0.001)
+        await self.server.pump()
+        self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
+
+        await self.myTearDown()
     
-    def tearDown(self):
+    async def myTearDown(self):
         del self.server
         del self.endpoint
 
