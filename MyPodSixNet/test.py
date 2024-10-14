@@ -1,14 +1,6 @@
 import unittest
-import logging
-from endpoint import EndPoint
-from server import Server
-from helpers import *
-from tobeused import connect_to_server, start_server
-from time import time, sleep
+from facade import *
 import asyncio
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
 
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
@@ -19,7 +11,7 @@ class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.fail("Expected OSError")
 
 class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
-    async def mySetUp(self):
+    async def asyncSetUp(self):
         self.outgoing = [
             {"action": "hello", "data": {"a": 321, "b": [2, 3, 4], "c": ["afw", "wafF", "aa", "weEEW", "w234r"], "d": ["x"] * 256}},
             {"action": "hello", "data": [454, 35, 43, 543, "aabv"]},
@@ -62,11 +54,10 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
                 endpointData.connected = False
         
         server_adress = NetworkAddress("localhost", 31426)
-        self.server = await start_server(server_adress, lambda address, conn: ServerTester(address, conn))
-        self.endpoint = await connect_to_server(server_adress, lambda address, conn: EndPointTester(address, conn))
+        self.server = await start_server(server_adress, lambda conn: ServerTester(conn))
+        self.endpoint = await connect_to_server(server_adress, lambda conn: EndPointTester(conn))
     
     async def runTest(self):
-        await self.mySetUp()
         self.server: Server
         self.endpoint: EndPoint
         for o in self.outgoing:
@@ -100,10 +91,8 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.001)
         await self.server.pump()
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
-
-        await self.myTearDown()
     
-    async def myTearDown(self):
+    async def asyncTearDown(self):
         del self.server
         del self.endpoint
 

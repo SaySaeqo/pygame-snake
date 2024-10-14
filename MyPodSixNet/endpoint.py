@@ -1,15 +1,11 @@
 import asyncio
-from helpers import NetworkAddress
-from icecream import ic
+from address import *
 from json import dumps, loads
-
-def pop_till_empty(queue: asyncio.Queue):
-    while not queue.empty():
-        yield queue.get_nowait()
-
-END_SEQ = b"\0---\0"
+from logger import *
 
 class EndPoint:
+    
+    END_SEQ = b"\0---\0"
 
     def __init__(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter, network_listener_factory):
         self.reader = reader
@@ -18,9 +14,7 @@ class EndPoint:
         self.sendqueue: asyncio.Queue[dict] = asyncio.Queue()
         self.recqueue: asyncio.Queue[dict] = asyncio.Queue()
         self.receiver_task = None
-        self.network_listener = network_listener_factory(self.address, self)
-
-        self.send(action="connected")
+        self.network_listener = network_listener_factory(self)
 
     def __del__(self):
         self.stop_listening()
@@ -44,14 +38,15 @@ class EndPoint:
         try:
             self.receiver_task = asyncio.create_task(self.receiver())
         except ConnectionError as connectionError:
-            ic(self.address, connectionError)
+            LOG.warning("Connection error from %s: %s", self.address, connectionError)
             self.stop_listening()
 
     async def receiver(self):
+        await self.send_now(action="connected")
         try:
             while True:
-                data = await self.reader.readuntil(END_SEQ)
-                data = data[:-len(END_SEQ)]  
+                data = await self.reader.readuntil(self.END_SEQ)
+                data = data[:-len(self.END_SEQ)]  
                 data = loads(data)
                 await self.recqueue.put(data)
         except asyncio.CancelledError as cancelledError:
@@ -68,15 +63,20 @@ class EndPoint:
         self.writer.write(dumps({
             "action": action,
             "data": data
-        }).encode() + END_SEQ)
+        }).encode() + self.END_SEQ)
         await self.writer.drain()
 
     async def pump(self):
         # empty the sendqueue
-        for data in pop_till_empty(self.sendqueue):
-            self.writer.write(dumps(data).encode() + END_SEQ)
+        while not self.sendqueue.empty():
+            data = self.sendqueue.get_nowait()
+            self.writer.write(dumps(data).encode() + self.END_SEQ)
         await self.writer.drain()
 
         # empty the recqueue
-        for data in pop_till_empty(self.recqueue):
-            [getattr(self.network_listener, n)(data["data"]) for n in ("Network_" + data["action"], "Network") if hasattr(self.network_listener, n)]
+        while not self.recqueue.empty():
+            data = self.recqueue.get_nowait()
+            handler_name = "Network_" + data["action"]
+            if hasattr(self.network_listener, handler_name):
+                getattr(self.network_listener, handler_name)(data["data"])
+            self.network_listener.Network(data)

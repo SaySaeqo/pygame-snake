@@ -1,7 +1,6 @@
 import asyncio
-from helpers import NetworkAddress
-from icecream import ic
-from endpoint import EndPoint
+from address import *
+from endpoint import *
 
 
 class Server:
