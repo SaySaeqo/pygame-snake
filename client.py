@@ -78,10 +78,10 @@ class ClientNetworkListener(net.NetworkListener):
     def Network_score(self, game_state):
         for task in self.snake_tasks:
             task.cancel()
-        self.get_data_task.cancel()
         game_state = GameState.from_json(game_state)
         log().info("Game over")
-        show_scores(game_state.scores, game_state.players)
+        show_scores(game_state.scores, ClientNetworkData().players)
+        pygame_asyncio.setView(LobbyView(str(self.conn.address), self.conn))
 
 async def run_client(host_address: net.NetworkAddress, local_players_names: list, control_functions: list):
     try:

@@ -62,8 +62,8 @@ async def run_host(local_players_names: list, options: Options, control_function
             tg.create_task(run_game(game_state, options))
 
         server.send("score", game_state.to_json())
-
-        show_scores(game_state.scores, map(lambda x: x[0], players))
+        await asyncio.sleep(0.2)
+        show_scores(game_state.scores, players)
         game_state.reset()
     
     read_data_task.cancel()
