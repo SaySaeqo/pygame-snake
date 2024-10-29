@@ -1,7 +1,7 @@
 import asyncio
-from address import *
+from .address import *
 from json import dumps, loads
-from logger import *
+from .logger import *
 
 class EndPoint:
     
@@ -53,13 +53,13 @@ class EndPoint:
             await self.send_now(action="disconnected")
             raise cancelledError
 
-    def send(self, data = None, action: str = "default"):
+    def send(self, action: str, data = None):
         self.sendqueue.put_nowait({
             "action": action,
             "data": data
         })
 
-    async def send_now(self, data = None, action: str = "default"):
+    async def send_now(self, action: str, data = None):
         self.writer.write(dumps({
             "action": action,
             "data": data

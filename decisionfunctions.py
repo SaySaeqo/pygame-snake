@@ -19,3 +19,9 @@ async def control_snake(function, snake, fps):
     while snake.alive:
         await clock.tick(fps)
         snake.decision = function()
+
+async def send_decision(conn, name, fps, function):
+    clock = Clock()
+    while True:
+        await clock.tick(fps)
+        await conn.send("control", {"name": name, "direction": function()})

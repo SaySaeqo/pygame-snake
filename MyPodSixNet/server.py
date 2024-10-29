@@ -1,6 +1,6 @@
 import asyncio
-from address import *
-from endpoint import *
+from .address import *
+from .endpoint import *
 
 
 class Server:
@@ -39,11 +39,17 @@ class Server:
         await connection
         del self.connections[connection.address]
 
-    def send(self, data, to: NetworkAddress = None, action = "default"):
+    def send_now(self, action: str, data = None, to: NetworkAddress = None):
         if to is None:
-            [conn.send(data, action) for conn in self.connections.values()]
+            [conn.send_now(action, data) for conn in self.connections.values()]
         else:
-            self.connections[to].send(data, action)
+            self.connections[to].send_now(action, data)
+
+    def send(self, action: str, data = None, to: NetworkAddress = None):
+        if to is None:
+            [conn.send(action, data) for conn in self.connections.values()]
+        else:
+            self.connections[to].send(action, data)
 
     async def pump(self):
         [await conn.pump() for conn in self.connections.values()]

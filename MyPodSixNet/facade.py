@@ -1,8 +1,8 @@
 import asyncio
-from endpoint import *
-from server import *
-from listener import *
-from address import *
+from .endpoint import *
+from .server import *
+from .listener import *
+from .address import *
     
 async def connect_to_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)) -> EndPoint:
     reader, writer = await asyncio.open_connection(address.ip, address.port)

@@ -1,5 +1,5 @@
-from endpoint import *
-from logger import LOG
+from .endpoint import *
+from .logger import LOG
 
 class NetworkListener:
     def __init__(self, connection: EndPoint) -> None:

@@ -1,5 +1,5 @@
 import unittest
-from facade import *
+from .facade import *
 import asyncio
 
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
@@ -37,7 +37,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def Network_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
-                self.conn.send("Yeah, we got it: " + str(len(data)) + " elements", "gotit")
+                self.conn.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements")
 
             def Network_disconnected(self, data):
                 serverData.connected = False
@@ -61,7 +61,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.server: Server
         self.endpoint: EndPoint
         for o in self.outgoing:
-            self.endpoint.send(o["data"], o["action"])
+            self.endpoint.send(o["action"], o["data"])
         
         for x in range(50):
             await self.server.pump()

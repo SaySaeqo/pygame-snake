@@ -8,7 +8,7 @@ from screeninfo import get_monitors
 import asyncclock
 import json
 from math import floor
-import MyPodSixNet.tobeused as net
+import MyPodSixNet as net
 from dataclasses import dataclass
 
 WINDOWS_FUNCTIONS_FPS = 10
@@ -18,7 +18,7 @@ class Align:
     TOP = 1
     BOTTOM = 2
 
-def text2surface(text: str, font_size=32, with_background=False):
+def text2surface(text: str, font_size=32, with_background=False) -> pygame.Surface:
     LINE_SPACING = 10  # distance between lines for displayed text (in pixels)
     FONT = pygame.font.SysFont("monospace", font_size, bold=True)
 
@@ -59,6 +59,23 @@ def title(text: str, align=Align.TOP, font_size=32, offset=0):
         if not text: return
         surface = text2surface(text, font_size)
         merge_into_board(surface, align, offset)
+
+class MenuDrawer:
+
+    def __init__(self, initial_offset=0):
+        self.offset = initial_offset
+        pygame.display.get_surface().fill(Color.black)
+
+    def draw(self, text: str, font_size=32, align=Align.TOP):
+        surface = text2surface(text, font_size)
+        merge_into_board(surface, align, self.offset)
+        self.offset += surface.get_height()
+        return self
+
+    def add_space(self, offset):
+        self.offset += offset
+        return self
+
         
 def await_keypress(check_key, check_keys=lambda keys: False, clock=pygame.time.Clock()):
     pygame.display.update()
@@ -310,34 +327,27 @@ class LobbyState:
         self.players = other.players
         self.host_address = other.host_address
         self.game_started = other.game_started
+
+
+WINDOW_CLOSE_EVENT = pygame.event.custom_type()
     
 
-async def network_room(state: LobbyState):
+async def network_room(players, host):
     clock = asyncclock.Clock()
-    frame_time = 1/WINDOWS_FUNCTIONS_FPS
     while True:
-        TITLE_OFFSET = 30
-        offset = TITLE_OFFSET
-        pygame.display.get_surface().fill(Color.black)
-        title_sur = text2surface("Network Room", 72)
-        merge_into_board(title_sur, Align.TOP, offset)
-        offset += title_sur.get_height()
-        subtitle_sur = text2surface("(Press enter to start)", 18)
-        merge_into_board(subtitle_sur, Align.TOP, offset)
-        offset += subtitle_sur.get_height() + TITLE_OFFSET
-        if (state.host_address):
-            host_address_sur = text2surface(f"Host: {state.host_address.ip}:{state.host_address.port}", 24)
-        else:
-            host_address_sur = text2surface("Not sure...", 24)
-        merge_into_board(host_address_sur, Align.TOP, offset)
-        offset += host_address_sur.get_height() + TITLE_OFFSET*2
 
         players_phrase = ""
-        for player in state.players:
-            players_phrase += f"{player[0]} ({player[1].ip}:{player[1].port})\n"
-
-        players_sur = text2surface(players_phrase)
-        merge_into_board(players_sur, Align.TOP, offset)
+        for player in players:
+            players_phrase += f"{player})\n"
+        
+        SOME_OFFSET = 30
+        MenuDrawer(SOME_OFFSET)\
+            .draw("Network Room", 72)\
+            .draw("(Press enter to start)", 18)\
+            .add_space(SOME_OFFSET)\
+            .draw(f"Host: {host}", 24)\
+            .add_space(SOME_OFFSET*2)\
+            .draw(players_phrase)
 
         pygame.display.update()
 
@@ -346,7 +356,11 @@ async def network_room(state: LobbyState):
             if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return
+                return True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+                return False
+            if event.type == WINDOW_CLOSE_EVENT:
+                return True
             
 async def wait_screen(msg):
     clock = asyncclock.Clock()
