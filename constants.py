@@ -11,3 +11,7 @@ class Color:
     gold = (255, 215, 0)
 
     default = yellowish
+
+def get_color(idx: int) -> tuple:
+    colors = [Color.white, Color.red, Color.green, Color.blue, Color.cyan, Color.magenta, Color.gold]
+    return colors[idx % len(colors)]

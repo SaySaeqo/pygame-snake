@@ -24,4 +24,4 @@ async def send_decision(conn, name, fps, function):
     clock = Clock()
     while True:
         await clock.tick(fps)
-        await conn.send("control", {"name": name, "direction": function()})
+        conn.send("control", {"name": name, "direction": function()})

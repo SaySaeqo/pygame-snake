@@ -42,7 +42,7 @@ class EndPoint:
             self.stop_listening()
 
     async def receiver(self):
-        await self.send_now(action="connected")
+        self.send(action="connected")
         try:
             while True:
                 data = await self.reader.readuntil(self.END_SEQ)
@@ -50,7 +50,7 @@ class EndPoint:
                 data = loads(data)
                 await self.recqueue.put(data)
         except asyncio.CancelledError as cancelledError:
-            await self.send_now(action="disconnected")
+            self.send(action="disconnected")
             raise cancelledError
 
     def send(self, action: str, data = None):
@@ -58,13 +58,6 @@ class EndPoint:
             "action": action,
             "data": data
         })
-
-    async def send_now(self, action: str, data = None):
-        self.writer.write(dumps({
-            "action": action,
-            "data": data
-        }).encode() + self.END_SEQ)
-        await self.writer.drain()
 
     async def pump(self):
         # empty the sendqueue

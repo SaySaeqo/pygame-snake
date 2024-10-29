@@ -39,12 +39,6 @@ class Server:
         await connection
         del self.connections[connection.address]
 
-    def send_now(self, action: str, data = None, to: NetworkAddress = None):
-        if to is None:
-            [conn.send_now(action, data) for conn in self.connections.values()]
-        else:
-            self.connections[to].send_now(action, data)
-
     def send(self, action: str, data = None, to: NetworkAddress = None):
         if to is None:
             [conn.send(action, data) for conn in self.connections.values()]

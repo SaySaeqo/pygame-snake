@@ -89,6 +89,8 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
 
         self.endpoint.stop_listening()
         await asyncio.sleep(0.001)
+        await self.endpoint.pump()
+        await asyncio.sleep(0.001)
         await self.server.pump()
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
     

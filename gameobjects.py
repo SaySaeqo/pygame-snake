@@ -197,7 +197,8 @@ class Snake(Circle):
             },
             "rotation_power": self.rotation_power,
             "alive": self.alive,
-            "tail": [t.to_json() for t in self.tail]
+            "tail": [t.to_json() for t in self.tail],
+            "color": self.color
         }
      
     @classmethod
@@ -207,6 +208,7 @@ class Snake(Circle):
         snake.direction = pygame.Vector2(json["direction"]["x"], json["direction"]["y"])
         snake.rotation_power = json["rotation_power"]
         snake.alive = json["alive"]
+        snake.color = json["color"]
         for t in json["tail"]:
             tail = Circle.from_json(t)
             tail.color = snake.color

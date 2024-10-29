@@ -3,6 +3,7 @@ from singleton_decorator import singleton
 from asyncclock import Clock
 import sys
 import windowfunctions
+import snake_utils
 
 class PyGameView:
 
@@ -49,4 +50,5 @@ async def run_pygame_async(fps=60):
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
+    snake_utils.log().info(f"Set view to {view.__class__.__name__}")
 
