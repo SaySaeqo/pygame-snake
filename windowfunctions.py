@@ -368,7 +368,7 @@ async def wait_screen(msg):
     frame_time = 1/WINDOWS_FUNCTIONS_FPS
     while True:
         pygame.display.get_surface().fill(Color.black)
-        title(f"{msg}{"."*floor(count)}", Align.CENTER)
+        title(f"{msg}{'.'*floor(count)}", Align.CENTER)
         count = (count + frame_time) % 4
         pygame.display.update()
         await clock.tick(WINDOWS_FUNCTIONS_FPS)
