@@ -7,7 +7,7 @@ class NetworkAddress:
     port: int = 1234
 
     def corrected_ip(self):
-        if not re.match(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self.ip):
+        if not self.ip or not re.match(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self.ip):
             return "localhost"
         return self.ip
 

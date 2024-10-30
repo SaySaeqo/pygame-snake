@@ -4,7 +4,6 @@ from decisionfunctions import control_snake
 from snake_utils import *
 import utils
 import windowfunctions
-import json
 
 
 class HostNetworkListener(net.NetworkListener):
@@ -30,7 +29,7 @@ class HostNetworkListener(net.NetworkListener):
         player.decision = data["direction"]
         
 async def run_host(local_players_names: list, options: Options, control_functions: list):
-    server_address = net.NetworkAddress("localhost", 31426)
+    server_address = net.NetworkAddress(None, 31426)
     host = f"{utils.get_my_ip()}:{server_address.port}"
     local_players_num = len(local_players_names)
     players = [[name, str(server_address)] for name in local_players_names]
