@@ -345,6 +345,8 @@ class SnakeMenu:
     
     def save_config(self):
         with open("config.data", "w") as file:
+            for idx, name in enumerate(self.names):
+                file.write(f"player {idx+1} name: {name}\n")
             for control in self.controls:
                 file.write(f"player {self.controls.index(control)+1} controls: {pygame.key.name(control.left)} {pygame.key.name(control.right)}\n")
             file.write(f"resolution: {pygame.display.get_window_size()[0]} {pygame.display.get_window_size()[1]}\n")
@@ -357,8 +359,11 @@ class SnakeMenu:
                         pygame.init()
                         parts = line.split()
                         player = int(parts[1]) - 1
-                        self.controls[player].left = pygame.key.key_code(parts[3])
-                        self.controls[player].right = pygame.key.key_code(parts[4])
+                        if (parts[2] == "name:"):
+                            self.names[player] = " ".join(parts[3:])
+                        if (parts[2] == "controls:"):
+                            self.controls[player].left = pygame.key.key_code(parts[3])
+                            self.controls[player].right = pygame.key.key_code(parts[4])
                     if line.startswith("resolution"):
                         parts = line.split()
                         create_window("Snake", int(parts[1]), int(parts[2]))
