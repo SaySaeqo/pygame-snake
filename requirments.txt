@@ -1,0 +1,15 @@
+altgraph==0.17.4
+asttokens==2.4.1
+asyncio==3.4.3
+colorama==0.4.6
+executing==2.0.1
+icecream==2.1.3
+packaging==24.1
+pygame==2.5.2
+Pygments==2.17.2
+pyinstaller==6.11.0
+pyinstaller-hooks-contrib==2024.9
+screeninfo==0.8.1
+setuptools==75.3.0
+singleton-decorator==1.0.0
+six==1.16.0
