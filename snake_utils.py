@@ -415,9 +415,11 @@ class SnakeMenu:
                     if suboption == "JOIN":
                         self.network.is_host = False
                         self.network.is_active = True
-                        host_address_phrase = inputbox("Enter host address:", "localhost:1234")
+                        host_address_phrase = inputbox("Enter host address:", "localhost")
                         if host_address_phrase:
                             separator = ":" if ":" in host_address_phrase else ";"
                             parts = host_address_phrase.split(separator)
-                            self.network.host_address = net.NetworkAddress(parts[0], int(parts[1]))
+                            ip = parts[0]
+                            port = int(parts[1]) if len(parts) > 1 else 31426
+                            self.network.host_address = net.NetworkAddress(ip, port)
                         return
