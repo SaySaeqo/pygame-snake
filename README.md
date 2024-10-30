@@ -13,7 +13,7 @@ This is a Snake game project with networking capabilities. The game can be playe
 
 ```bash
 git clone https://github.com/SaySaeqo/pygame-snake.git
-cd snake-game
+cd pygame-snake
 ```
 
 ### 2. Create a Virtual Environment
@@ -51,28 +51,16 @@ pip install -r requirements.txt
 To run the game, execute the following command:
 
 ```bash
-python 
-
-snake.py
-
+python snake.py
 
 ```
 
 ## Optional: Generate Executable with PyInstaller
 
-If you want to generate an executable for the game, you can use PyInstaller. First, install PyInstaller:
+If you want to generate an executable for the game, you can use PyInstaller.
 
 ```bash
-pip install pyinstaller
-```
-
-Then, generate the executable:
-
-```bash
-pyinstaller --onefile 
-
-snake.py
-
+pyinstaller --onefile snake.py
 
 ```
 
