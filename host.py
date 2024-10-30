@@ -55,6 +55,7 @@ async def run_host(local_players_names: list, options: Options, control_function
 
         players_playing_num = len(players)
         game_state.players = initialize_players(options.diameter, players_playing_num)
+        options.resolution = pygame.display.get_window_size()
         server.send("start", options.to_json())
 
         async with asyncio.TaskGroup() as tg:

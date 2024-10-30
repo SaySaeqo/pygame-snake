@@ -25,6 +25,7 @@ class Options:
     speed: int = 8
     time_limit: int = 60
     rotation_power: int = 5
+    resolution: tuple[int, int] = (800, 600)
 
     def to_json(self):
         return {
@@ -32,7 +33,8 @@ class Options:
             "diameter": self.diameter,
             "speed": self.speed,
             "time_limit": self.time_limit,
-            "rotation_power": self.rotation_power
+            "rotation_power": self.rotation_power,
+            "resolution": self.resolution
         }
     
     @classmethod
@@ -42,7 +44,8 @@ class Options:
             diameter=data["diameter"],
             speed=data["speed"],
             time_limit=data["time_limit"],
-            rotation_power=data["rotation_power"]
+            rotation_power=data["rotation_power"],
+            resolution=data["resolution"]
         )
     
     def copy_values(self, other):
@@ -51,6 +54,7 @@ class Options:
         self.speed = other.speed
         self.time_limit = other.time_limit
         self.rotation_power = other.rotation_power
+        self.resolution = other.resolution
 
 
 def initialize_players(diameter, number):
@@ -69,6 +73,7 @@ class GameState:
     wall_event_timer: float = 0
     wall_walking_event_timer: float = 0
     weird_walking_event_timer: float = 0
+    destroying_event_timer: float = 0
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
 
@@ -84,6 +89,7 @@ class GameState:
         self.wall_event_timer = 0
         self.wall_walking_event_timer = 0
         self.weird_walking_event_timer = 0
+        self.destroying_event_timer = 0
         self.current_speed = 0
         self.scores = []
 
@@ -97,6 +103,7 @@ class GameState:
             "wall_event_timer": self.wall_event_timer,
             "wall_walking_event_timer": self.wall_walking_event_timer,
             "weird_walking_event_timer": self.weird_walking_event_timer,
+            "destroying_event_timer": self.destroying_event_timer,
             "current_speed": self.current_speed,
             "scores": self.scores
         }
@@ -112,6 +119,7 @@ class GameState:
             wall_event_timer=data["wall_event_timer"],
             wall_walking_event_timer=data["wall_walking_event_timer"],
             weird_walking_event_timer=data["weird_walking_event_timer"],
+            destroying_event_timer=data["destroying_event_timer"],
             current_speed=data["current_speed"],
             scores=data["scores"]
         )
@@ -125,6 +133,7 @@ class GameState:
         self.wall_event_timer = other.wall_event_timer
         self.wall_walking_event_timer = other.wall_walking_event_timer
         self.weird_walking_event_timer = other.weird_walking_event_timer
+        self.destroying_event_timer = other.destroying_event_timer
         self.current_speed = other.current_speed
         self.scores = other.scores
     
@@ -139,7 +148,10 @@ class GameState:
 def draw_board(state: GameState):
         pygame.display.get_surface().fill(Color.black)
         if not state:
+            title("NO GAME STATE\n(error)", offset=10)
             return
+        
+        # draw game objects
         for player in state.alive_players():
             player.draw()
         for fruit in state.fruits:
@@ -147,15 +159,20 @@ def draw_board(state: GameState):
         for wall in state.walls:
             wall.draw()
 
+        # draw wall
+        if state.wall_walking_event_timer == 0:
+            pygame.draw.rect(pygame.display.get_surface(), Color.cyan, pygame.display.get_surface().get_rect(), 1)
 
-async def only_draw_board(state: GameState, fps: int):
-    clock = Clock()
-    while True:
-        draw_board(state)
-        await clock.tick(fps)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
+        # draw time and score
+        time_phrase = "TIME: "
+        time_phrase += f"{int(state.time_passed / 60)}:{int(state.time_passed) % 60:02d}" if state.time_passed >= 60 else f"{int(state.time_passed)}"
+        score_phrase = f"SCORE: {sum(state.scores)}"
+        title(time_phrase + "\n" + score_phrase, offset=10)
+
+        # draw arrows for 1st 2 seconds
+        if state.time_passed < 2:
+            for player in state.alive_players():
+                player.draw_direction()
 
 def show_scores(scores, names):
     end_phrase = "GAME OVER\n"
@@ -197,18 +214,6 @@ async def run_game(st: GameState, options=Options()):
     while True:
         # displaying view
         draw_board(st)
-        
-        if st.wall_walking_event_timer == 0:
-            pygame.draw.rect(pygame.display.get_surface(), Color.cyan, pygame.display.get_surface().get_rect(), 1)
-
-        time_phrase = "TIME: "
-        time_phrase += f"{int(st.time_passed / 60)}:{int(st.time_passed) % 60:02d}" if st.time_passed >= 60 else f"{int(st.time_passed)}"
-        score_phrase = f"SCORE: {sum(st.scores)}"
-        title(time_phrase + "\n" + score_phrase, offset=10)
-        # draw arrows for 1st 2 seconds
-        if st.time_passed < 2:
-            for player in st.alive_players():
-                player.draw_direction()
         pygame.display.update()
 
         # pygame "must-have" + pausing
@@ -238,13 +243,15 @@ async def run_game(st: GameState, options=Options()):
                         st.wall_walking_event_timer += 5
                     if fruit.gives_weird_walking:
                         st.weird_walking_event_timer += 15
+                    if fruit.gives_wall_walking and fruit.gives_weird_walking:
+                        st.destroying_event_timer += 5
                     player.consume(fruit)
                     st.scores[idx] += 1
                     # TODO wynik zapisuje sie dla pierwszego gracza, nawet jeśli drugi zje owoc a pierwszy już nie żyje
             # with walls
             for wall in st.walls:
                 if wall.is_colliding_with(player):
-                    if st.weird_walking_event_timer == st.wall_walking_event_timer + 10: #TODO czy to aby na pewno działa?
+                    if st.destroying_event_timer > 0:
                         pygame.mixer.Sound("crush.mp3").play(maxtime=1000)
                         st.walls.remove(wall)
                     else:
@@ -272,6 +279,7 @@ async def run_game(st: GameState, options=Options()):
         st.fruit_event_timer += frame_time
         st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - frame_time)
         st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - frame_time)
+        st.destroying_event_timer = max(0, st.destroying_event_timer - frame_time)
         if st.fruit_event_timer > 5:
             st.fruits.append(Fruit.at_random_position(options.diameter / 2))
             st.fruit_event_timer = 0

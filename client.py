@@ -71,6 +71,7 @@ class ClientNetworkListener(net.NetworkListener):
     def Network_start(self, options):
         log().info("Game is starting")
         options = Options.from_json(options)
+        pygame.display.set_mode(options.resolution)
         self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.conn, name, options.fps, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
         pygame_asyncio.setView(GameView(self.conn))
