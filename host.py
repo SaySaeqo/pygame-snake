@@ -39,9 +39,10 @@ async def run_host(local_players_names: list, options: Options, control_function
     server = await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
 
     async def read_data():
+        clock = Clock()
         while True:
             await server.pump()
-            await asyncio.sleep(0.1)
+            await clock.tick(options.fps)
 
     read_data_task = asyncio.create_task(read_data())
     

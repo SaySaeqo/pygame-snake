@@ -3,3 +3,6 @@ leaderboard.data
 config.data
 env/*
 **/__pycache__/*
+dist/*
+build/*
+snake.spec
