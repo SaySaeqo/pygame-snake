@@ -9,6 +9,7 @@ from asyncclock import Clock
 import MyPodSixNet as net
 import logging
 import constants
+import asyncio
 
 def log():
     return logging.getLogger(__name__)
@@ -199,13 +200,13 @@ async def run_game(st: GameState, options=Options()):
     # region READY?
     title("READY?", Align.CENTER)
     pygame.display.update()
-    pygame.time.wait(666)
+    await asyncio.sleep(0.666)
     draw_board(st)
     # endregion
     # region GO!
     title("GO!", Align.CENTER, 144)
     pygame.display.update()
-    pygame.time.wait(333)
+    await asyncio.sleep(0.333)
     draw_board(st)
     # endregion
 
