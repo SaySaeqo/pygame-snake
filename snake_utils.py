@@ -242,7 +242,6 @@ async def run_game(st: GameState, options=Options()):
                         st.destroying_event_timer += 5
                     player.consume(fruit)
                     st.scores[idx] += 1
-                    # TODO wynik zapisuje sie dla pierwszego gracza, nawet jeśli drugi zje owoc a pierwszy już nie żyje
             # with walls
             for wall in st.walls:
                 if wall.is_colliding_with(player):
