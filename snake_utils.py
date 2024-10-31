@@ -8,7 +8,7 @@ from decisionfunctions import based_on_keys
 import apygame
 import MyPodSixNet as net
 import logging
-import constants
+import json
 import asyncio
 
 def log():
@@ -137,13 +137,6 @@ class GameState:
         self.destroying_event_timer = other.destroying_event_timer
         self.current_speed = other.current_speed
         self.scores = other.scores
-    
-    def to_bytes(self):\
-        return json.dumps(self.to_json()).encode()
-    
-    @classmethod
-    def from_bytes(cls, data: bytes):
-        return cls.from_json(json.loads(data.decode()))
 
 
 def draw_board(state: GameState):
@@ -195,8 +188,6 @@ async def run_game(st: GameState, options=Options()):
     # endregion
     draw_board(st)
 
-    # first_completed(wait_screen("waiting", asyncio.wait(2)))
-
     # region READY?
     title("READY?", Align.CENTER)
     pygame.display.update()
@@ -230,7 +221,6 @@ async def run_game(st: GameState, options=Options()):
             if event.type == pygame.QUIT:
                 sys.exit()
         if should_pause:
-            # TODO pause crashes games
             pause()
             draw_board(st)
 
