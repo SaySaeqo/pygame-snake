@@ -79,6 +79,11 @@ class GameState:
 
     def alive_players(self):
         return list(filter(lambda x: x.alive, self.players))
+    
+    def enumarate_alive_players(self):
+        for idx, player in enumerate(self.players):
+            if player.alive:
+                yield idx, player
 
     def reset(self):
         self.players = []
@@ -223,7 +228,7 @@ async def run_game(st: GameState, options=Options()):
             pause()
             draw_board(st)
 
-        for idx, player in enumerate(st.alive_players()):
+        for idx, player in st.enumarate_alive_players():
             player.move(options.diameter * st.current_speed / fps, should_walk_weird=(st.weird_walking_event_timer > 0))
             # region COLLISION_CHECK
             # with fruits
