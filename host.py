@@ -4,6 +4,7 @@ from decisionfunctions import control_snake
 from snake_utils import *
 import utils
 import windowfunctions
+import apygame
 
 
 class HostNetworkListener(net.NetworkListener):
@@ -38,7 +39,7 @@ async def run_host(local_players_names: list, options: Options, control_function
     server = await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
 
     async def read_data():
-        clock = Clock()
+        clock = apygame.Clock()
         while True:
             await server.pump()
             await clock.tick(options.fps)

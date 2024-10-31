@@ -67,7 +67,7 @@ class Fruit(Circle):
         elif rnd < 0.2:
             self.gives_weird_walking = True
             if self.gives_wall_walking:
-                pygame.mixer.Sound("bless.mp3").play(maxtime=4000)
+                pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
         else:
             self.gives_wall_walking = False
             self.gives_weird_walking = False

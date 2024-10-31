@@ -5,7 +5,7 @@ from constants import Color
 from windowfunctions import *
 from dataclasses import dataclass, field
 from decisionfunctions import based_on_keys
-from asyncclock import Clock
+import apygame
 import MyPodSixNet as net
 import logging
 import constants
@@ -60,8 +60,8 @@ class Options:
 
 def initialize_players(diameter, number):
     players = [Snake.at_random_position(diameter / 2) for _ in range(number)]
-    for i in range(number):
-        players[i].color = constants.get_color(i)
+    for player, color in zip(players, Color.players_colors()):
+        player.color = color
     return players
 
 @dataclass
@@ -211,7 +211,7 @@ async def run_game(st: GameState, options=Options()):
     # endregion
 
     # inner main loop
-    clock = Clock()
+    clock = apygame.Clock()
     while True:
         # displaying view
         draw_board(st)
@@ -253,7 +253,7 @@ async def run_game(st: GameState, options=Options()):
             for wall in st.walls:
                 if wall.is_colliding_with(player):
                     if st.destroying_event_timer > 0:
-                        pygame.mixer.Sound("crush.mp3").play(maxtime=1000)
+                        pygame.mixer.Sound("sound/crush.mp3").play(maxtime=1000)
                         st.walls.remove(wall)
                     else:
                         player.died()

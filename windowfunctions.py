@@ -1,15 +1,10 @@
-from io import TextIOWrapper
 import pygame
 import sys
 from constants import Color
 from utils import unique
-import functools
 from screeninfo import get_monitors
-import asyncclock
-import json
+import apygame
 from math import floor
-import MyPodSixNet as net
-from dataclasses import dataclass
 
 WINDOWS_FUNCTIONS_FPS = 10
 
@@ -294,46 +289,8 @@ def leaderboard(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_k
         merge_into_board(title_sur, Align.TOP, OFFSET)
         await_keypress(operate, operate_keys)
 
-
-@dataclass
-class LobbyState:
-    players: list[(str, net.NetworkAddress)]
-    host_address: net.NetworkAddress
-    game_started: bool = False
-
-    def to_json(self):
-        return {
-            "players": self.players,
-            "host_address": self.host_address.to_json() if self.host_address else None,
-            "game_started": self.game_started
-        }
-    
-    @classmethod
-    def from_json(cls, data):
-        return cls(
-            players=data["players"],
-            host_address=net.NetworkAddress.from_json(data["host_address"]) if data["host_address"] else None,
-            game_started=data.get("game_started", False)
-        )   
-    
-    def to_bytes(self):
-        return json.dumps(self.to_json()).encode()
-    
-    @classmethod
-    def from_bytes(cls, data: bytes):
-        return cls.from_json(json.loads(data.decode()))
-    
-    def copy_values(self, other):
-        self.players = other.players
-        self.host_address = other.host_address
-        self.game_started = other.game_started
-
-
-WINDOW_CLOSE_EVENT = pygame.event.custom_type()
-    
-
 async def network_room(players, host):
-    clock = asyncclock.Clock()
+    clock = apygame.Clock()
     while True:
 
         players_phrase = ""
@@ -359,11 +316,9 @@ async def network_room(players, host):
                 return True
             if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 return False
-            if event.type == WINDOW_CLOSE_EVENT:
-                return True
             
 async def wait_screen(msg):
-    clock = asyncclock.Clock()
+    clock = apygame.Clock()
     count = 0
     frame_time = 1/WINDOWS_FUNCTIONS_FPS
     while True:

@@ -1,5 +1,5 @@
 import pygame
-from asyncclock import Clock
+import apygame
 
 class Direction:
     FORWARD = 0
@@ -15,13 +15,13 @@ def based_on_keys(left, right):
     return function
 
 async def control_snake(function, snake, fps):
-    clock = Clock()
+    clock = apygame.Clock()
     while snake.alive:
         await clock.tick(fps)
         snake.decision = function()
 
 async def send_decision(conn, name, fps, function):
-    clock = Clock()
+    clock = apygame.Clock()
     while True:
         await clock.tick(fps)
         conn.send("control", {"name": name, "direction": function()})

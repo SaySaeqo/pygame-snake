@@ -2,7 +2,7 @@ import MyPodSixNet as net
 from utils import *
 from snake_utils import *
 import windowfunctions
-import pygame_asyncio
+import apygame
 from singleton_decorator import singleton
 from dataclasses import dataclass
 import decisionfunctions
@@ -15,7 +15,7 @@ class ClientNetworkData:
     gameState = None
 
 
-class LobbyView(pygame_asyncio.PyGameView):
+class LobbyView(apygame.PyGameView):
 
     def __init__(self, host_address, conn: net.EndPoint):
         self.host_address = host_address
@@ -40,7 +40,7 @@ class LobbyView(pygame_asyncio.PyGameView):
         
 
 
-class GameView(pygame_asyncio.PyGameView):
+class GameView(apygame.PyGameView):
 
     def __init__(self, conn: net.EndPoint):
         self.conn = conn
@@ -74,7 +74,7 @@ class ClientNetworkListener(net.NetworkListener):
         pygame.display.set_mode(options.resolution)
         self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.conn, name, options.fps, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
-        pygame_asyncio.setView(GameView(self.conn))
+        apygame.setView(GameView(self.conn))
 
     def Network_score(self, game_state):
         for task in self.snake_tasks:
@@ -82,7 +82,7 @@ class ClientNetworkListener(net.NetworkListener):
         game_state = GameState.from_json(game_state)
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
-        pygame_asyncio.setView(LobbyView(str(self.conn.address), self.conn))
+        apygame.setView(LobbyView(str(self.conn.address), self.conn))
 
 async def run_client(host_address: net.NetworkAddress, local_players_names: list, control_functions: list):
     try:
@@ -100,9 +100,9 @@ async def run_client(host_address: net.NetworkAddress, local_players_names: list
 
     client.send("join", local_players_names)
 
-    pygame_asyncio.setView(LobbyView(host_address, client))
+    apygame.setView(LobbyView(host_address, client))
 
-    await pygame_asyncio.run_pygame_async(fps=60)
+    await apygame.init(fps=60)
 
     del client
 
