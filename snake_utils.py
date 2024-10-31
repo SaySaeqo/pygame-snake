@@ -11,7 +11,7 @@ import logging
 import asyncio
 
 def log():
-    return logging.getLogger(__name__)
+    return logging.getLogger("snake")
 
 @dataclass
 class Options:
@@ -251,12 +251,12 @@ async def run_game(st: GameState, options=Options()):
                         st.walls.remove(wall)
                     else:
                         player.died()
-                        print("Clash with wall")
+                        log().info(f"Player {idx+1} clashed with wall")
             # with borders
             if not pygame.display.get_surface().get_rect().contains(player.get_rect()):
                 if (st.wall_walking_event_timer == 0):
                     player.died()
-                    print("Out of border")
+                    log().info(f"Player {idx+1} got out of border")
                 else:
                     player.x = (player.x + pygame.display.get_surface().get_rect().width) % pygame.display.get_surface().get_rect().width
                     player.y = (player.y + pygame.display.get_surface().get_rect().height) % pygame.display.get_surface().get_rect().height
@@ -264,7 +264,7 @@ async def run_game(st: GameState, options=Options()):
             for pl in st.alive_players():
                 if player.is_colliding_with(pl):
                     player.died()
-                    print("Clash with tail")
+                    log().info(f"Player {idx+1} clashed with sb's tail")
             # endregion
         if len(st.alive_players()) == 0:
             return st.scores
