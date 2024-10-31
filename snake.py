@@ -33,10 +33,14 @@ async def main():
         game_state = GameState()
         game_state.init(options.diameter, snake_menu.number_of_players, options.speed)
 
-        async with asyncio.TaskGroup() as tg:
-            for snake, func in zip(game_state.players, snake_menu.control_functions):
-                tg.create_task(control_snake(func, snake, options.fps))
-            scores = await run_game(game_state, options)
+
+        for snake, func in zip(game_state.players, snake_menu.control_functions):
+            asyncio.create_task(control_snake(func, snake, options.fps))
+
+        apygame.setView(GameView(game_state, options))
+        await apygame.init(fps=options.fps)
+
+        scores = game_state.scores
 
         # save scores
         with open("leaderboard.data", "a") as file:

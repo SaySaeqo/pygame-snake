@@ -26,7 +26,7 @@ class Clock:
 
 class PyGameView:
 
-    def update(self):
+    def update(self, delta):
         pass
 
     def handle_event(self, event):
@@ -41,21 +41,27 @@ class PyGameView:
 @singleton
 class CurrentPyGameView:
 
-    _view = PyGameView()
+    view = PyGameView()
+    result = None
 
-    async def update(self):
-        self._view.update()
+    async def update(self, delta):
+        if self.view is None:
+            return
+        self.view.update(delta)
         pygame.display.flip()
         for event in pygame.event.get():
-            self._view.handle_event(event)
-        await self._view.async_operation()
+            self.view.handle_event(event)
+        await self.view.async_operation()
+        if self.closing:
+            self.view = None
+            self.closing = False
 
-    def set(self, value: PyGameView):
-        if (not isinstance(value, PyGameView)):
-            raise TypeError("value must be a PyGameView")
-        if not value:
-            raise ValueError("value must not be None")
-        self._view = value
+    def set(self, view):
+        if view is None:
+            self.closing = True
+        else:
+            self.view = view
+            self.closing = False
 
 
 async def init(fps=60):
@@ -63,11 +69,12 @@ async def init(fps=60):
     To be used once after creating pygame window.
     """
     clock = Clock()
-    while True:
-        await CurrentPyGameView().update()
+    delta = 1 / fps
+    while CurrentPyGameView().view:
+        await CurrentPyGameView().update(delta)
         await clock.tick(fps)
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
     logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__}")
-
+    

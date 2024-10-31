@@ -185,7 +185,6 @@ def show_scores(scores, names):
         end_phrase += f"{name}: {score}\n"
     pause(end_phrase)
 
-
 async def ready_go(st: GameState):
     draw_board(st)
     title("READY?", Align.CENTER)
@@ -199,29 +198,18 @@ async def ready_go(st: GameState):
     await asyncio.sleep(0.333)
     draw_board(st)
 
-async def run_game(st: GameState, options: Options):
+class GameView(apygame.PyGameView):
 
-    await ready_go(st)
+    def __init__(self, game_state: GameState, options: Options):
+        self.state = game_state
+        self.options = options
+        self.after_readygo = False
 
-    # inner main loop
-    clock = apygame.Clock()
-    fps = options.fps
-    delta = 1 / fps
-    while True:
-        # displaying view
-        draw_board(st)
-        pygame.display.update()
+    def update(self, delta):
+        st = self.state
+        options = self.options
 
-        # pygame "must-have" + pausing
-        await clock.tick(fps)
-        events = pygame.event.get()
-        for event in events:
-            if event.type == pygame.KEYDOWN and event.key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE):
-                pause()
-                draw_board(st)
-            if event.type == pygame.QUIT:
-                sys.exit()
-            
+        draw_board(self.state)
 
         for idx, player in st.enumarate_alive_players():
             player.move(options.diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
@@ -261,7 +249,7 @@ async def run_game(st: GameState, options: Options):
                     log().info(f"Player {idx+1} clashed with sb's tail")
             # endregion
         if st.all_players_dead():
-            return st.scores
+            apygame.setView(None)
 
         # update time counter
         st.time_passed += delta
@@ -282,6 +270,19 @@ async def run_game(st: GameState, options: Options):
         st.current_speed = options.speed + 2 * int(1 + st.time_passed / 10)
         for player in st.alive_players():
             player.rotation_power = options.rotation_power + int(st.time_passed / 10)
+
+
+    def handle_event(self, event):
+        if event.type == pygame.QUIT:
+            sys.exit()
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE):
+            pause()
+            draw_board(self.state)
+
+    async def async_operation(self):
+        if not self.after_readygo:
+            await ready_go(self.state)
+            self.after_readygo = True
 
 class SnakeMenu:
 

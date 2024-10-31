@@ -12,7 +12,7 @@ from icecream import ic
 @dataclass
 class ClientNetworkData:
     players = []
-    gameState: GameState = None
+    game_state: GameState = None
 
 
 class LobbyView(apygame.PyGameView):
@@ -21,7 +21,7 @@ class LobbyView(apygame.PyGameView):
         self.host_address = host_address
         self.conn = conn
 
-    def update(self):
+    def update(self, delta):
         players_phrase = ""
         for player in ClientNetworkData().players:
             players_phrase += f"{player})\n"
@@ -40,21 +40,21 @@ class LobbyView(apygame.PyGameView):
         
 
 
-class GameView(apygame.PyGameView):
+class ClientGameView(apygame.PyGameView):
 
     def __init__(self, conn: net.EndPoint):
         self.conn = conn
         self.after_readygo = False
 
-    def update(self):
-        draw_board(ClientNetworkData().gameState)
+    def update(self, delta):
+        draw_board(ClientNetworkData().game_state)
 
     async def async_operation(self):
         self.conn.send("get_game_data")
         await self.conn.pump()
 
-        if not self.after_readygo and ClientNetworkData().gameState:
-            await ready_go(ClientNetworkData().gameState)
+        if not self.after_readygo and ClientNetworkData().game_state:
+            await ready_go(ClientNetworkData().game_state)
             self.after_readygo = True
 
 
@@ -71,7 +71,7 @@ class ClientNetworkListener(net.NetworkListener):
         ClientNetworkData().players = players
 
     def Network_game(self, game_state):
-        ClientNetworkData().gameState = GameState.from_json(game_state)
+        ClientNetworkData().game_state = GameState.from_json(game_state)
 
     def Network_start(self, options):
         log().info("Game is starting")
@@ -79,7 +79,7 @@ class ClientNetworkListener(net.NetworkListener):
         pygame.display.set_mode(options.resolution)
         self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.conn, name, options.fps, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
-        apygame.setView(GameView(self.conn))
+        apygame.setView(ClientGameView(self.conn))
 
     def Network_score(self, game_state):
         for task in self.snake_tasks:
