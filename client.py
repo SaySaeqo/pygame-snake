@@ -12,7 +12,7 @@ from icecream import ic
 @dataclass
 class ClientNetworkData:
     players = []
-    gameState = None
+    gameState: GameState = None
 
 
 class LobbyView(apygame.PyGameView):
@@ -44,6 +44,7 @@ class GameView(apygame.PyGameView):
 
     def __init__(self, conn: net.EndPoint):
         self.conn = conn
+        self.after_readygo = False
 
     def update(self):
         draw_board(ClientNetworkData().gameState)
@@ -51,6 +52,10 @@ class GameView(apygame.PyGameView):
     async def async_operation(self):
         self.conn.send("get_game_data")
         await self.conn.pump()
+
+        if not self.after_readygo and ClientNetworkData().gameState:
+            await ready_go(ClientNetworkData().gameState)
+            self.after_readygo = True
 
 
 class ClientNetworkListener(net.NetworkListener):
