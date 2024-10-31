@@ -71,3 +71,6 @@ This will create a `dist` directory with the executable file `snake` (or `snake.
 - The game saves scores to `leaderboard.data`.
 - The game can be played in both host and client modes.
 - The game uses asyncio for asynchronous operations.
+
+## License
+This project is licensed under the GNU General Public License v3.0. See the LICENSE file for details.
