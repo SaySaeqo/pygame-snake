@@ -8,7 +8,6 @@ from decisionfunctions import based_on_keys
 import apygame
 import MyPodSixNet as net
 import logging
-import json
 import asyncio
 
 def log():
