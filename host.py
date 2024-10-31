@@ -53,8 +53,7 @@ async def run_host(local_players_names: list, options: Options, control_function
         if not should_start:
             break
 
-        players_playing_num = len(players)
-        game_state.players = initialize_players(options.diameter, players_playing_num)
+        game_state.init(options.diameter, len(players), options.speed)
         options.resolution = pygame.display.get_window_size()
         server.send("start", options.to_json())
 

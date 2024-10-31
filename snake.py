@@ -31,8 +31,7 @@ async def main():
                 continue
 
         game_state = GameState()
-        game_state.players = initialize_players(options.diameter, snake_menu.number_of_players)
-
+        game_state.init(options.diameter, snake_menu.number_of_players, options.speed)
 
         async with asyncio.TaskGroup() as tg:
             for snake, func in zip(game_state.players, snake_menu.control_functions):

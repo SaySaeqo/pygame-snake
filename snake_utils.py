@@ -56,13 +56,6 @@ class Options:
         self.rotation_power = other.rotation_power
         self.resolution = other.resolution
 
-
-def initialize_players(diameter, number):
-    players = [Snake.at_random_position(diameter / 2) for _ in range(number)]
-    for player, color in zip(players, Color.players_colors()):
-        player.color = color
-    return players
-
 @dataclass
 class GameState:
     players: list[Snake] = field(default_factory=list)
@@ -77,13 +70,27 @@ class GameState:
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
 
+    def init(self, diameter, number_of_players, initial_speed):
+        radius = diameter / 2
+        color = Color.players_colors()
+        for _ in range(number_of_players):
+            player = Snake.at_random_position(radius)
+            player.color = next(color)
+            self.players.append(player)
+        self.fruits=[Fruit.at_random_position(radius) for _ in range(6)]
+        self.current_speed= initial_speed
+        self.scores=[0] * number_of_players
+
     def alive_players(self):
-        return list(filter(lambda x: x.alive, self.players))
+        return filter(lambda x: x.alive, self.players)
     
     def enumarate_alive_players(self):
         for idx, player in enumerate(self.players):
             if player.alive:
                 yield idx, player
+
+    def all_players_dead(self):
+        return all(not player.alive for player in self.players)
 
     def reset(self):
         self.players = []
@@ -142,7 +149,6 @@ class GameState:
         self.current_speed = other.current_speed
         self.scores = other.scores
 
-
 def draw_board(state: GameState):
         pygame.display.get_surface().fill(Color.black)
         if not state:
@@ -175,61 +181,50 @@ def draw_board(state: GameState):
 def show_scores(scores, names):
     end_phrase = "GAME OVER\n"
     end_phrase += f"TOTAL SCORE: {sum(scores)}\n"
-    for idx, score in enumerate(scores):
-        end_phrase += f"{names[idx]}: {score}\n"
+    for name, score in zip(names, scores):
+        end_phrase += f"{name}: {score}\n"
     pause(end_phrase)
 
-async def run_game(st: GameState, options=Options()):
 
-    create_window("Snake")
-
-    # region GAME_STATE
-    # initialize game objects
-    st.fruits=[Fruit.at_random_position(options.diameter / 2) for _ in range(6)]
-    # initialize game variables
-    st.current_speed=options.speed
-    st.scores=[0] * len(st.players)
-    # endregion
+async def ready_go(st: GameState):
     draw_board(st)
-
-    # region READY?
     title("READY?", Align.CENTER)
     pygame.display.update()
     await asyncio.sleep(0.666)
-    draw_board(st)
     # endregion
     # region GO!
+    draw_board(st)
     title("GO!", Align.CENTER, 144)
     pygame.display.update()
     await asyncio.sleep(0.333)
     draw_board(st)
-    # endregion
+
+async def run_game(st: GameState, options: Options):
+
+    await ready_go(st)
 
     # inner main loop
     clock = apygame.Clock()
+    fps = options.fps
+    delta = 1 / fps
     while True:
         # displaying view
         draw_board(st)
         pygame.display.update()
 
         # pygame "must-have" + pausing
-        fps = options.fps
-        frame_time = 1 / fps
         await clock.tick(fps)
         events = pygame.event.get()
-        should_pause = False
         for event in events:
-            if event.type == pygame.KEYDOWN and \
-                    event.key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE):
-                should_pause = True
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE):
+                pause()
+                draw_board(st)
             if event.type == pygame.QUIT:
                 sys.exit()
-        if should_pause:
-            pause()
-            draw_board(st)
+            
 
         for idx, player in st.enumarate_alive_players():
-            player.move(options.diameter * st.current_speed / fps, should_walk_weird=(st.weird_walking_event_timer > 0))
+            player.move(options.diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
             # region COLLISION_CHECK
             # with fruits
             for fruit in st.fruits:
@@ -265,20 +260,20 @@ async def run_game(st: GameState, options=Options()):
                     player.died()
                     log().info(f"Player {idx+1} clashed with sb's tail")
             # endregion
-        if len(st.alive_players()) == 0:
+        if st.all_players_dead():
             return st.scores
 
         # update time counter
-        st.time_passed += frame_time
-        st.fruit_event_timer += frame_time
-        st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - frame_time)
-        st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - frame_time)
-        st.destroying_event_timer = max(0, st.destroying_event_timer - frame_time)
+        st.time_passed += delta
+        st.fruit_event_timer += delta
+        st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
+        st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - delta)
+        st.destroying_event_timer = max(0, st.destroying_event_timer - delta)
         if st.fruit_event_timer > 5:
             st.fruits.append(Fruit.at_random_position(options.diameter / 2))
             st.fruit_event_timer = 0
         if st.time_passed > options.time_limit:
-            st.wall_event_timer += frame_time
+            st.wall_event_timer += delta
             if st.wall_event_timer > (options.time_limit**2) / (st.time_passed**2):
                 st.walls += [Wall.at_random_position(options.diameter)]
                 st.wall_event_timer = 0
