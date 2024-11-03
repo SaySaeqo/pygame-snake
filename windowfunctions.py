@@ -116,7 +116,8 @@ def create_window(title, width=None, height=None, icon=None):
     if icon:
         pygame.display.set_icon(icon)
     if width and height:
-        pygame.display.set_mode((width, height))
+        full_screen = get_screen_size() == (width, height)
+        pygame.display.set_mode((width, height), pygame.FULLSCREEN if full_screen else 0)
     else:
         next_screen_resolution()
 
