@@ -11,8 +11,8 @@ class NetworkListener:
     def Network(self, data):
         LOG.debug(f"Action {data['action']} from " + str(self.conn.address))
 
-    def Network_connected(self, data):
+    def Network_connected(self):
         LOG.debug("Connected to " + str(self.conn.address))
 
-    def Network_disconnected(self, data):
+    def Network_disconnected(self):
         LOG.debug("Disconnected from " + str(self.conn.address))

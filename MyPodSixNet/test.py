@@ -1,6 +1,7 @@
 import unittest
 from .facade import *
 import asyncio
+import logging
 
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
@@ -31,7 +32,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.endpointTester_data = endpointData = TesterData()
         
         class ServerTester(NetworkListener):
-            def Network_connected(self, data):
+            def Network_connected(self):
                 serverData.connected = True
 
             def Network_hello(self, data):
@@ -39,66 +40,63 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
                 serverData.count += 1
                 self.conn.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements")
 
-            def Network_disconnected(self, data):
+            def Network_disconnected(self):
                 serverData.connected = False
         
         class EndPointTester(NetworkListener):
-            def Network_connected(self, data):
+            def Network_connected(self):
                 endpointData.connected = True
             
             def Network_gotit(self, data):
                 endpointData.received.append(data)
                 endpointData.count += 1
 
-            def Network_disconnected(self, data):
+            def Network_disconnected(self):
                 endpointData.connected = False
         
         server_adress = NetworkAddress("localhost", 31426)
-        self.server = await start_server(server_adress, lambda conn: ServerTester(conn))
+        await start_server(server_adress, lambda conn: ServerTester(conn))
         self.endpoint = await connect_to_server(server_adress, lambda conn: EndPointTester(conn))
+        del connections[server_adress]
     
     async def runTest(self):
-        self.server: Server
         self.endpoint: EndPoint
         for o in self.outgoing:
             self.endpoint.send(o["action"], o["data"])
-        
-        for x in range(50):
-            await self.server.pump()
-            await self.endpoint.pump()
-            
-            # see if what we receive from the server is what we expect
-            for r in self.serverTester_data.received:
-                expected = self.outgoing.pop(0)["data"]
-                self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
-            self.serverTester_data.received = []
-            
-            # see if what we receive from the client is what we expect
-            for r in self.endpointTester_data.received:
-                expected = "Yeah, we got it: %d elements" % self.lengths.pop(0)
-                self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
-            self.endpointTester_data.received = []
-            
-            await asyncio.sleep(0.001)
+
+        await asyncio.sleep(.1)
         
         self.assertTrue(self.serverTester_data.connected, "Server is not connected")
         self.assertTrue(self.endpointTester_data.connected, "Endpoint is not connected")
 
         self.assertTrue(self.serverTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.serverTester_data.count}")
         self.assertTrue(self.endpointTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.endpointTester_data.count}")   
+        
+        # see if what we receive from the server is what we expect
+        for r in self.serverTester_data.received:
+            expected = self.outgoing.pop(0)["data"]
+            self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
+        self.serverTester_data.received = []
+        
+        # see if what we receive from the client is what we expect
+        for r in self.endpointTester_data.received:
+            expected = "Yeah, we got it: %d elements" % self.lengths.pop(0)
+            self.assertTrue(r == expected, str(r) + " =/= " + str(expected))
+        self.endpointTester_data.received = []
+            
 
-        self.endpoint.stop_listening()
-        await asyncio.sleep(0.001)
-        await self.endpoint.pump()
-        await asyncio.sleep(0.001)
-        await self.server.pump()
-        self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
-    
-    async def asyncTearDown(self):
-        del self.server
         del self.endpoint
+        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)
+        self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
+
+    async def asyncTearDown(self):
+        close()
 
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    logging.getLogger("asyncio").setLevel(logging.INFO)
     unittest.main()
