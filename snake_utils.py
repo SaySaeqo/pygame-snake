@@ -280,6 +280,7 @@ class GameView(apygame.PyGameView):
             draw_board(self.state)
 
     async def async_operation(self):
+        net.send("game", self.state.to_json())
         if not self.after_readygo:
             await ready_go(self.state)
             self.after_readygo = True

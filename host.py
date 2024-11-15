@@ -18,12 +18,6 @@ class HostNetworkListener(net.NetworkListener):
         new_players = [[name, str(self.conn.address)] for name in names]
         self.players.extend(new_players)
 
-    def Network_get_lobby_data(self, _):
-        self.conn.send("lobby", self.players)
-
-    def Network_get_game_data(self, _):
-        self.conn.send("game", self.game_state.to_json())
-
     def Network_control(self, data):
         idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == str(self.conn.address))
         player = self.game_state.players[idx]

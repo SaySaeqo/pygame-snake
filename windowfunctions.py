@@ -5,6 +5,7 @@ from utils import unique
 from screeninfo import get_monitors
 import apygame
 from math import floor
+import MyPodSixNet as net
 
 WINDOWS_FUNCTIONS_FPS = 10
 
@@ -308,6 +309,7 @@ async def network_room(players, host):
             .draw(players_phrase)
 
         pygame.display.update()
+        net.send("lobby", players)
 
         await clock.tick(WINDOWS_FUNCTIONS_FPS)
         for event in pygame.event.get():
