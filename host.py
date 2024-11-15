@@ -36,15 +36,7 @@ async def run_host(local_players_names: list, options: Options, control_function
     players = [[name, str(server_address)] for name in local_players_names]
     game_state = GameState()
 
-    server = await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
-
-    async def read_data():
-        clock = apygame.Clock()
-        while True:
-            await server.pump()
-            await clock.tick(options.fps)
-
-    read_data_task = asyncio.create_task(read_data())
+    await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
     
     while True:
         should_start = await windowfunctions.network_room(players, host)
@@ -55,7 +47,8 @@ async def run_host(local_players_names: list, options: Options, control_function
 
         game_state.init(options.diameter, len(players), options.speed)
         options.resolution = pygame.display.get_window_size()
-        server.send("start", options.to_json())
+        net.send("start", options.to_json())
+        await asyncio.sleep(0.2)
 
         for snake, func in zip(game_state.players[:local_players_num], control_functions):
             asyncio.create_task(control_snake(func, snake, options.fps))
@@ -63,13 +56,12 @@ async def run_host(local_players_names: list, options: Options, control_function
         apygame.setView(GameView(game_state, options))
         await apygame.init(fps=options.fps)
 
-        server.send("score", game_state.to_json())
+        net.send("score", game_state.to_json())
         await asyncio.sleep(0.2)
         show_scores(game_state.scores, players)
         game_state.reset()
-    
-    read_data_task.cancel()
-    del server
+
+    net.close()
 
 
 

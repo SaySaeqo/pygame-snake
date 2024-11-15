@@ -3,6 +3,7 @@ from .endpoint import *
 from .listener import *
 from .address import *
 import json
+import utils
 
 
 connections = {}
@@ -25,8 +26,9 @@ class GeneralProtocol(asyncio.Protocol):
             connections[self.transport_address] = (endpoint, self.network_listener)
     
         def data_received(self, data):
-            for d in data.split(EndPoint.END_SEQ)[:-1]:
-                d = json.loads(d.decode())
+            data = [json.loads(d.decode()) for d in data.split(EndPoint.END_SEQ)[:-1]]
+            data = utils.unique(data, lambda x: x["action"])
+            for d in data:
                 handler_name = "Network_" + d["action"]
                 if hasattr(self.network_listener, handler_name):
                     getattr(self.network_listener, handler_name)(d["data"])
@@ -55,15 +57,15 @@ async def start_server(address: NetworkAddress, network_listener_factory = lambd
     global serving_task
     serving_task = asyncio.create_task(server.serve_forever())
 
-def send(self, action: str, data = None, to: NetworkAddress = None):
+def send(action: str, data = None, to: NetworkAddress = None):
     if to is None:
-        [conn.send(action, data) for conn, _ in connections]
+        [conn.send(action, data) for conn, _ in connections.values()]
     else:
         connections[to][0].send(action, data)
 
 def close():
     global connections
-    for conn, _ in connections:
+    for conn, _ in connections.values():
         conn.transport.close()
     connections.clear()
     global serving_task

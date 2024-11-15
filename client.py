@@ -36,7 +36,6 @@ class LobbyView(apygame.PyGameView):
         
     async def async_operation(self):
         self.conn.send("get_lobby_data")
-        await self.conn.pump()
         
 
 
@@ -51,7 +50,6 @@ class ClientGameView(apygame.PyGameView):
 
     async def async_operation(self):
         self.conn.send("get_game_data")
-        await self.conn.pump()
 
         if not self.after_readygo and ClientNetworkData().game_state:
             await ready_go(ClientNetworkData().game_state)
