@@ -13,15 +13,12 @@ class Clock:
         if 0 >= fps:
             return
  
-        end_time = (1.0 / fps) * 1000
-        current = self.time_func()
-        time_diff = current - self.last_tick
-        delay = (end_time - time_diff) / 1000
- 
-        self.last_tick = current
-        if delay < 0:
-            delay = 0
- 
+        to_await = (1.0 / fps) * 1000
+        now = self.time_func()
+        since_last_tick = now - self.last_tick
+        delay = (to_await - since_last_tick) / 1000
+        self.last_tick = now
+
         await asyncio.sleep(delay)
 
 class PyGameView:
@@ -77,4 +74,3 @@ async def init(fps=60):
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
     logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__}")
-    
