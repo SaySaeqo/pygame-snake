@@ -3,6 +3,9 @@ import json
 from .address import NetworkAddress
 
 class EndPoint:
+    """
+    wrapper for asyncio.Transport
+    """
     
     END_SEQ = b"\0---\0"
 

@@ -61,12 +61,14 @@ def send(action: str, data = None, to: NetworkAddress = None):
     if to is None:
         [conn.send(action, data) for conn, _ in connections.values()]
     else:
-        connections[to][0].send(action, data)
+        try:
+            connections[to][0].send(action, data)
+        except KeyError:
+            LOG.error(f"Could not send message to {to}")
+            pass
 
 def close():
     global connections
-    for conn, _ in connections.values():
-        conn.transport.close()
     connections.clear()
     global serving_task
     if serving_task:
