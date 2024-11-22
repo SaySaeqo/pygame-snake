@@ -37,7 +37,7 @@ async def main():
         for snake, func in zip(game_state.players, snake_menu.control_functions):
             asyncio.create_task(control_snake(func, snake, options.fps))
 
-        apygame.setView(GameView(game_state, options))
+        apygame.setView(ReadyGoView(game_state, GameView(game_state, options)))
         await apygame.init(fps=options.fps)
 
         scores = game_state.scores

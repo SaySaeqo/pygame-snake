@@ -1,4 +1,5 @@
 import MyPodSixNet as net
+import snake_utils
 from utils import *
 from snake_utils import *
 import windowfunctions
@@ -37,16 +38,20 @@ class LobbyView(apygame.PyGameView):
 
 class ClientGameView(apygame.PyGameView):
 
-    def __init__(self):
-        self.after_readygo = False
-
     def update(self, delta):
         draw_board(ClientNetworkData().game_state)
 
+class ClientReadyGoView(snake_utils.ReadyGoView):
+
+    def __init__(self, next_view: apygame.PyGameView):
+        super().__init__(ClientNetworkData().game_state, next_view)
+
+    def update(self, delta):
+        self.state = ClientNetworkData().game_state
+        super().update(delta)
+
     async def async_operation(self):
-        if not self.after_readygo and ClientNetworkData().game_state:
-            await ready_go(ClientNetworkData().game_state)
-            self.after_readygo = True
+        pass
 
 
 class ClientNetworkListener(net.NetworkListener):
@@ -70,7 +75,7 @@ class ClientNetworkListener(net.NetworkListener):
         pygame.display.set_mode(options.resolution)
         self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.conn, name, options.fps, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
-        apygame.setView(ClientGameView())
+        apygame.setView(ClientReadyGoView(ClientGameView()))
 
     def Network_score(self, game_state):
         for task in self.snake_tasks:

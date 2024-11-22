@@ -47,7 +47,7 @@ async def run_host(local_players_names: list, options: Options, control_function
         for snake, func in zip(game_state.players[:local_players_num], control_functions):
             asyncio.create_task(control_snake(func, snake, options.fps))
 
-        apygame.setView(GameView(game_state, options))
+        apygame.setView(ReadyGoView(game_state,GameView(game_state, options)))
         await apygame.init(fps=options.fps)
 
         net.send("score", game_state.to_json())

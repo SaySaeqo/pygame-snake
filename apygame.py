@@ -3,6 +3,7 @@ from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
+import time
 
 class Clock:
     def __init__(self, time_func=pygame.time.get_ticks):
@@ -10,16 +11,21 @@ class Clock:
         self.last_tick = time_func() or 0
  
     async def tick(self, fps=0):
+        """
+        It is not perfect 1/fps long tick, can be around this number, specially for windows
+        """
         if 0 >= fps:
             return
- 
+
+        since_last_tick = self.time_func() - self.last_tick
         to_await = (1.0 / fps) * 1000
-        now = self.time_func()
-        since_last_tick = now - self.last_tick
         delay = (to_await - since_last_tick) / 1000
-        self.last_tick = now
 
         await asyncio.sleep(delay)
+        now = self.time_func()
+        awaited = (now - self.last_tick) / 1000
+        self.last_tick = now
+        return awaited
 
 class PyGameView:
 
@@ -66,10 +72,9 @@ async def init(fps=60):
     To be used once after creating pygame window.
     """
     clock = Clock()
-    delta = 1 / fps
     while CurrentPyGameView().view:
+        delta = await clock.tick(fps)
         await CurrentPyGameView().update(delta)
-        await clock.tick(fps)
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)

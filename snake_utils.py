@@ -185,25 +185,11 @@ def show_scores(scores, names):
         end_phrase += f"{name}: {score}\n"
     pause(end_phrase)
 
-async def ready_go(st: GameState):
-    draw_board(st)
-    title("READY?", Align.CENTER)
-    pygame.display.update()
-    await asyncio.sleep(0.666)
-    # endregion
-    # region GO!
-    draw_board(st)
-    title("GO!", Align.CENTER, 144)
-    pygame.display.update()
-    await asyncio.sleep(0.333)
-    draw_board(st)
-
 class GameView(apygame.PyGameView):
 
     def __init__(self, game_state: GameState, options: Options):
         self.state = game_state
         self.options = options
-        self.after_readygo = False
 
     def update(self, delta):
         st = self.state
@@ -281,9 +267,26 @@ class GameView(apygame.PyGameView):
 
     async def async_operation(self):
         net.send("game", self.state.to_json())
-        if not self.after_readygo:
-            await ready_go(self.state)
-            self.after_readygo = True
+
+class ReadyGoView(apygame.PyGameView):
+
+    def __init__(self, game_state: GameState, next_view: apygame.PyGameView):
+        self.state = game_state
+        self.next_view = next_view
+        self.time_passed = 0
+
+    def update(self, delta):
+        self.time_passed += delta
+        draw_board(self.state)
+        if self.time_passed <= 0.666:
+            title("READY?", Align.CENTER)
+        elif self.time_passed <= 1:
+            title("GO!", Align.CENTER, 144)
+        else:
+            apygame.setView(self.next_view)
+
+    async def async_operation(self):
+        net.send("game", self.state.to_json())
 
 class SnakeMenu:
 
