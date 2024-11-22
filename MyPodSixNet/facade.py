@@ -26,7 +26,8 @@ class GeneralProtocol(asyncio.Protocol):
             connections[self.transport_address] = (endpoint, self.network_listener)
     
         def data_received(self, data):
-            data = [json.loads(d.decode()) for d in data.split(EndPoint.END_SEQ)[:-1]]
+            data = filter(lambda x: x, data.split(EndPoint.END_SEQ))
+            data = map(lambda x: json.loads(x.decode()), data)
             data = utils.unique(data, lambda x: x["action"])
             for d in data:
                 handler_name = "Network_" + d["action"]
