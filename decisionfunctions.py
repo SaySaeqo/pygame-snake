@@ -1,5 +1,6 @@
 import pygame
 import apygame
+import MyPodSixNet as net
 
 class Direction:
     FORWARD = 0
@@ -20,8 +21,8 @@ async def control_snake(function, snake, fps):
         await clock.tick(fps)
         snake.decision = function()
 
-async def send_decision(conn, name, fps, function):
+async def send_decision(conn: net.EndPoint, name, fps, function):
     clock = apygame.Clock()
-    while True:
+    while not conn.transport.is_closing():
         await clock.tick(fps)
         conn.send("control", {"name": name, "direction": function()})
