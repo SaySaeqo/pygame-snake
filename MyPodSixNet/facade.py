@@ -1,12 +1,29 @@
 import asyncio
-from .listener import *
 import json
 import utils
+import logging
 
+LOG = logging.getLogger("MyPodSixNet")
 END_SEQ = b"\0---\0"
 
 connections = {}
 serving_task = None
+
+class NetworkListener:
+    def __init__(self, address: tuple[str, int]) -> None:
+        self.address = address
+
+    def Network_default(self, data):
+        LOG.debug("Action 'default' from " + str(self.address))
+
+    def Network(self, data):
+        LOG.debug(f"Action {data['action']} from " + str(self.address))
+
+    def Network_connected(self):
+        LOG.debug("Connected to " + str(self.address))
+
+    def Network_disconnected(self):
+        LOG.debug("Disconnected from " + str(self.address))
 
 class GeneralProtocol(asyncio.Protocol):
     
