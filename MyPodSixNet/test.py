@@ -6,7 +6,7 @@ import logging
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
         try:
-            await connect_to_server(NetworkAddress("localhost", 31429))
+            await connect_to_server(("localhost", 31429))
         except OSError as osError:
             return
         self.fail("Expected OSError")
@@ -54,9 +54,9 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def Network_disconnected(self):
                 endpointData.connected = False
         
-        server_adress = NetworkAddress("localhost", 31426)
-        await start_server(server_adress, lambda conn: ServerTester(conn))
-        await connect_to_server(server_adress, lambda conn: EndPointTester(conn))
+        server_adress = ("localhost", 31426)
+        await start_server(server_adress, lambda address: ServerTester(address))
+        await connect_to_server(server_adress, lambda address: EndPointTester(address))
         self.sender = connections.pop(server_adress)
     
     async def runTest(self):

@@ -1,6 +1,5 @@
 import asyncio
 from .listener import *
-from .address import *
 import json
 import utils
 
@@ -8,7 +7,6 @@ END_SEQ = b"\0---\0"
 
 connections = {}
 serving_task = None
-
 
 class GeneralProtocol(asyncio.Protocol):
     
@@ -18,7 +16,10 @@ class GeneralProtocol(asyncio.Protocol):
     
         def connection_made(self, transport: asyncio.Transport):
             self.transport = transport
-            self.transport_address = NetworkAddress.from_transport(transport)
+            ip, port = transport.get_extra_info('peername')[:2]
+            if not all(map(lambda x: x.isdigit() , ip.split("."))):
+                ip = "localhost"
+            self.transport_address = ip, port
             self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
             self.network_listener.Network_connected()
             global connections
@@ -48,17 +49,17 @@ class GeneralProtocol(asyncio.Protocol):
                 pass
 
 
-async def connect_to_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
+async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
-    t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address.ip, address.port)
+    t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
 
-async def start_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
+async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
-    server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address.ip, address.port)
+    server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
     global serving_task
     serving_task = asyncio.create_task(server.serve_forever())
 
-def send(action: str, data = None, to: NetworkAddress = None):
+def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
         for transport, _ in connections.values():
             send_with_transport(transport, action, data)
@@ -75,7 +76,7 @@ def send_with_transport(transport: asyncio.WriteTransport, action: str, data = N
         "data": data
     }).encode() + END_SEQ)
 
-def is_connected(address: NetworkAddress):
+def is_connected(address: tuple[str, int]):
     try:
         return not connections[address][0].is_closing()
     except KeyError:
@@ -90,4 +91,3 @@ def close():
     if serving_task:
         serving_task.cancel()
     serving_task = None
-        

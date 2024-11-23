@@ -1,8 +1,7 @@
-from .address import *
 from .logger import LOG
 
 class NetworkListener:
-    def __init__(self, address: NetworkAddress) -> None:
+    def __init__(self, address: tuple[str, int]) -> None:
         self.address = address
 
     def Network_default(self, data):

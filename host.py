@@ -15,25 +15,25 @@ class HostNetworkListener(net.NetworkListener):
         self.game_state = game_state
 
     def Network_join(self, names):
-        new_players = [[name, str(self.address)] for name in names]
+        new_players = [[name, self.address] for name in names]
         self.players.extend(new_players)
 
     def Network_control(self, data):
-        idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == str(self.address))
+        idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self.address)
         player = self.game_state.players[idx]
         player.decision = data["direction"]
 
     def Network_disconnected(self):
         log().info("Player disconnected")
         for i in range(len(self.players)):
-            if self.players[i][1] == str(self.address):
+            if self.players[i][1] == self.address:
                 del self.players[i]
         
 async def run_host(local_players_names: list, options: Options, control_functions: list):
-    server_address = net.NetworkAddress(None, 31426)
-    host = f"{utils.get_my_ip()}:{server_address.port}"
+    server_address = (None, 31426)
+    host = f"{utils.get_my_ip()}:{server_address[1]}"
     local_players_num = len(local_players_names)
-    players = [[name, str(server_address)] for name in local_players_names]
+    players = [[name, server_address] for name in local_players_names]
     game_state = GameState()
 
     try:
@@ -62,7 +62,7 @@ async def run_host(local_players_names: list, options: Options, control_function
             show_scores(game_state.scores, players)
             game_state.reset()
             players.clear()
-            players.extend([name, str(server_address)] for name in local_players_names)
+            players.extend([name, server_address] for name in local_players_names)
 
     finally:
         net.close()

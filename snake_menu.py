@@ -122,5 +122,4 @@ class SnakeMenu:
                             parts = host_address_phrase.split(separator)
                             ip = parts[0]
                             port = int(parts[1]) if len(parts) > 1 else 31426
-                            host_address = net.NetworkAddress(ip, port)
-                            await client.run_client(host_address, self.names[:self.number_of_players], self.control_functions)
+                            await client.run_client((ip, port), self.names[:self.number_of_players], self.control_functions)

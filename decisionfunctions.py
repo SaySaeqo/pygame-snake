@@ -21,7 +21,7 @@ async def control_snake(function, snake, fps):
         await clock.tick(fps)
         snake.decision = function()
 
-async def send_decision(address: net.NetworkAddress, name, fps, function):
+async def send_decision(address: tuple[str, int], name, fps, function):
     clock = apygame.Clock()
     while net.is_connected(address):
         await clock.tick(fps)

@@ -30,7 +30,7 @@ class LobbyView(apygame.PyGameView):
         windowfunctions.MenuDrawer(SOME_OFFSET)\
             .draw("Network Room", 72)\
             .add_space(SOME_OFFSET)\
-            .draw(f"Host: {self.host_address}", 24)\
+            .draw(f"Host: {self.host_address[0]}:{self.host_address[1]}", 24)\
             .add_space(SOME_OFFSET*2)\
             .draw(players_phrase)
         
@@ -89,13 +89,13 @@ class ClientNetworkListener(net.NetworkListener):
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
         net.send("join", self.local_players_names)
-        apygame.setView(LobbyView(str(self.address)))
+        apygame.setView(LobbyView(self.address))
 
     def Network_disconnected(self):
         log().info("Disconnected from the server")
         apygame.setView(None)
 
-async def run_client(host_address: net.NetworkAddress, local_players_names: list, control_functions: list):
+async def run_client(host_address: tuple[str, int], local_players_names: list, control_functions: list):
     try:
         client = await first_completed(
             net.connect_to_server(host_address, lambda address: ClientNetworkListener(address, local_players_names, control_functions)),
