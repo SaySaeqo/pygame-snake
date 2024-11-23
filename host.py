@@ -22,6 +22,12 @@ class HostNetworkListener(net.NetworkListener):
         idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == str(self.conn.address))
         player = self.game_state.players[idx]
         player.decision = data["direction"]
+
+    def Network_disconnected(self):
+        log().info("Player disconnected")
+        for i in range(len(self.players)):
+            if self.players[i][1] == str(self.conn.address):
+                del self.players[i]
         
 async def run_host(local_players_names: list, options: Options, control_functions: list):
     server_address = net.NetworkAddress(None, 31426)
@@ -30,32 +36,36 @@ async def run_host(local_players_names: list, options: Options, control_function
     players = [[name, str(server_address)] for name in local_players_names]
     game_state = GameState()
 
-    await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
-    
-    while True:
-        should_start = await windowfunctions.network_room(players, host)
-        log().debug("Should start: %s", should_start)
+    try:
+        await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
+        
+        while True:
+            should_start = await windowfunctions.network_room(players, host)
+            log().debug("Should start: %s", should_start)
 
-        if not should_start:
-            break
+            if not should_start:
+                break
 
-        game_state.init(options.diameter, len(players), options.speed)
-        options.resolution = pygame.display.get_window_size()
-        net.send("start", options.to_json())
-        await asyncio.sleep(0.2)
+            game_state.init(options.diameter, len(players), options.speed)
+            options.resolution = pygame.display.get_window_size()
+            net.send("start", options.to_json())
+            await asyncio.sleep(0.2)
 
-        for snake, func in zip(game_state.players[:local_players_num], control_functions):
-            asyncio.create_task(control_snake(func, snake, options.fps))
+            for snake, func in zip(game_state.players[:local_players_num], control_functions):
+                asyncio.create_task(control_snake(func, snake, options.fps))
 
-        apygame.setView(ReadyGoView(game_state,GameView(game_state, options)))
-        await apygame.init(fps=options.fps)
+            apygame.setView(ReadyGoView(game_state,GameView(game_state, options)))
+            await apygame.init(fps=options.fps)
 
-        net.send("score", game_state.to_json())
-        await asyncio.sleep(0.2)
-        show_scores(game_state.scores, players)
-        game_state.reset()
+            net.send("score", game_state.to_json())
+            await asyncio.sleep(0.2)
+            show_scores(game_state.scores, players)
+            game_state.reset()
+            players.clear()
+            players.extend([name, str(server_address)] for name in local_players_names)
 
-    net.close()
+    finally:
+        net.close()
 
 
 

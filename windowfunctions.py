@@ -313,11 +313,11 @@ async def network_room(players, host):
 
         await clock.tick(WINDOWS_FUNCTIONS_FPS)
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            if event.type == pygame.QUIT:
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return True
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return False
             
 async def wait_screen(msg):

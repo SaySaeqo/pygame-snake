@@ -34,6 +34,11 @@ class LobbyView(apygame.PyGameView):
             .add_space(SOME_OFFSET*2)\
             .draw(players_phrase)
         
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                apygame.setView(None)
+        super().handle_event(event)
 
 
 class ClientGameView(apygame.PyGameView):
@@ -83,7 +88,12 @@ class ClientNetworkListener(net.NetworkListener):
         game_state = GameState.from_json(game_state)
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
+        net.send("join", self.local_players_names)
         apygame.setView(LobbyView(str(self.conn.address)))
+
+    def Network_disconnected(self):
+        log().info("Disconnected from the server")
+        apygame.setView(None)
 
 async def run_client(host_address: net.NetworkAddress, local_players_names: list, control_functions: list):
     try:
@@ -94,16 +104,20 @@ async def run_client(host_address: net.NetworkAddress, local_players_names: list
         if not isinstance(client, net.EndPoint):
             log().info("Connection aborted")
             return
+        
+        net.send("join", local_players_names)
+
+        apygame.setView(LobbyView(host_address))
+
+        await apygame.init(fps=60)
+        
     except OSError as e:
         log().error(e)
         log().info("Could not connect to the server")
         return
+    finally:
+        net.close()
+    
 
-    net.send("join", local_players_names)
-
-    apygame.setView(LobbyView(host_address))
-
-    await apygame.init(fps=60)
-
-    del client
+    
 

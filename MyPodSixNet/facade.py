@@ -28,7 +28,7 @@ class GeneralProtocol(asyncio.Protocol):
         def data_received(self, data):
             data = filter(lambda x: x, data.split(EndPoint.END_SEQ))
             data = map(lambda x: json.loads(x.decode()), data)
-            data = utils.unique(data, lambda x: x["action"])
+            data = utils.unique(list(data), lambda x: x["action"])
             for d in data:
                 handler_name = "Network_" + d["action"]
                 if hasattr(self.network_listener, handler_name):
@@ -70,8 +70,11 @@ def send(action: str, data = None, to: NetworkAddress = None):
 
 def close():
     global connections
+    for conn, _ in connections.values():
+        conn.transport.write_eof()
     connections.clear()
     global serving_task
     if serving_task:
         serving_task.cancel()
     serving_task = None
+        
