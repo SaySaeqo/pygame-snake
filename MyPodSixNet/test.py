@@ -38,7 +38,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def Network_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
-                self.conn.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements")
+                send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.address)
 
             def Network_disconnected(self):
                 serverData.connected = False
@@ -56,13 +56,12 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         
         server_adress = NetworkAddress("localhost", 31426)
         await start_server(server_adress, lambda conn: ServerTester(conn))
-        self.endpoint = await connect_to_server(server_adress, lambda conn: EndPointTester(conn))
-        del connections[server_adress]
+        await connect_to_server(server_adress, lambda conn: EndPointTester(conn))
+        self.sender = connections.pop(server_adress)
     
     async def runTest(self):
-        self.endpoint: EndPoint
         for o in self.outgoing:
-            self.endpoint.send(o["action"], o["data"])
+            send_with_transport(self.sender[0], o["action"], o["data"])
 
         await asyncio.sleep(.1)
         
@@ -85,7 +84,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.endpointTester_data.received = []
             
 
-        del self.endpoint
+        self.sender[0].abort()
         await asyncio.sleep(0.1)
         await asyncio.sleep(0.1)
         await asyncio.sleep(0.1)

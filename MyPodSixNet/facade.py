@@ -1,10 +1,10 @@
 import asyncio
-from .endpoint import *
 from .listener import *
 from .address import *
 import json
 import utils
 
+END_SEQ = b"\0---\0"
 
 connections = {}
 serving_task = None
@@ -18,15 +18,14 @@ class GeneralProtocol(asyncio.Protocol):
     
         def connection_made(self, transport: asyncio.Transport):
             self.transport = transport
-            endpoint = EndPoint(transport)
-            self.network_listener: NetworkListener = self.network_listener_factory(endpoint)
-            self.network_listener.Network_connected()
             self.transport_address = NetworkAddress.from_transport(transport)
+            self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
+            self.network_listener.Network_connected()
             global connections
-            connections[self.transport_address] = (endpoint, self.network_listener)
+            connections[self.transport_address] = (transport, self.network_listener)
     
         def data_received(self, data):
-            data = filter(lambda x: x, data.split(EndPoint.END_SEQ))
+            data = filter(lambda x: x, data.split(END_SEQ))
             data = map(lambda x: json.loads(x.decode()), data)
             data = utils.unique(list(data), lambda x: x["action"])
             for d in data:
@@ -41,18 +40,19 @@ class GeneralProtocol(asyncio.Protocol):
             self.network_listener.Network_disconnected()
             global connections
             try:
+                if not connections[self.transport_address][0].is_closing():
+                    LOG.error(f"Connection lost but not closed: {self.transport_address}")
+                    connections[self.transport_address][0].close()
                 del connections[self.transport_address]
             except KeyError:
                 pass
 
 
-async def connect_to_server(address: NetworkAddress, network_listener_factory = lambda conn: NetworkListener(conn)) -> EndPoint:
+async def connect_to_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address.ip, address.port)
-    
-    return EndPoint(t)
 
-async def start_server(address: NetworkAddress, network_listener_factory = lambda conn: NetworkListener(conn)):
+async def start_server(address: NetworkAddress, network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address.ip, address.port)
     global serving_task
@@ -60,18 +60,31 @@ async def start_server(address: NetworkAddress, network_listener_factory = lambd
 
 def send(action: str, data = None, to: NetworkAddress = None):
     if to is None:
-        [conn.send(action, data) for conn, _ in connections.values()]
+        for transport, _ in connections.values():
+            send_with_transport(transport, action, data)
     else:
         try:
-            connections[to][0].send(action, data)
+            send_with_transport(connections[to][0], action, data)
         except KeyError:
-            LOG.error(f"Could not send message to {to}")
+            LOG.error(f"Could not send message to {to}. No such connection.")
             pass
+
+def send_with_transport(transport: asyncio.WriteTransport, action: str, data = None):
+    transport.write(json.dumps({
+        "action": action,
+        "data": data
+    }).encode() + END_SEQ)
+
+def is_connected(address: NetworkAddress):
+    try:
+        return not connections[address][0].is_closing()
+    except KeyError:
+        return False
 
 def close():
     global connections
-    for conn, _ in connections.values():
-        conn.transport.write_eof()
+    for transport, _ in connections.values():
+        transport.write_eof()
     connections.clear()
     global serving_task
     if serving_task:

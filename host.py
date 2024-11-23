@@ -9,24 +9,24 @@ import apygame
 
 class HostNetworkListener(net.NetworkListener):
 
-    def __init__(self, conn, local_players: list, game_state: GameState):
-        super().__init__(conn)
+    def __init__(self, address, local_players: list, game_state: GameState):
+        super().__init__(address)
         self.players = local_players
         self.game_state = game_state
 
     def Network_join(self, names):
-        new_players = [[name, str(self.conn.address)] for name in names]
+        new_players = [[name, str(self.address)] for name in names]
         self.players.extend(new_players)
 
     def Network_control(self, data):
-        idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == str(self.conn.address))
+        idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == str(self.address))
         player = self.game_state.players[idx]
         player.decision = data["direction"]
 
     def Network_disconnected(self):
         log().info("Player disconnected")
         for i in range(len(self.players)):
-            if self.players[i][1] == str(self.conn.address):
+            if self.players[i][1] == str(self.address):
                 del self.players[i]
         
 async def run_host(local_players_names: list, options: Options, control_functions: list):
@@ -37,7 +37,7 @@ async def run_host(local_players_names: list, options: Options, control_function
     game_state = GameState()
 
     try:
-        await net.start_server(server_address, lambda conn: HostNetworkListener(conn, players, game_state))
+        await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
         
         while True:
             should_start = await windowfunctions.network_room(players, host)

@@ -62,8 +62,8 @@ class ClientReadyGoView(snake_utils.ReadyGoView):
 class ClientNetworkListener(net.NetworkListener):
     
 
-    def __init__(self, conn, local_players_names: list, control_functions: list):
-        super().__init__(conn)
+    def __init__(self, address, local_players_names: list, control_functions: list):
+        super().__init__(address)
         self.local_players_names = local_players_names
         self.control_functions = control_functions
         self.snake_tasks = []
@@ -78,7 +78,7 @@ class ClientNetworkListener(net.NetworkListener):
         log().info("Game is starting")
         options = Options.from_json(options)
         pygame.display.set_mode(options.resolution, pygame.FULLSCREEN if options.resolution == get_screen_size() else 0)
-        self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.conn, name, options.fps, function))
+        self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.address, name, options.fps, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
         apygame.setView(ClientReadyGoView(ClientGameView()))
 
@@ -89,7 +89,7 @@ class ClientNetworkListener(net.NetworkListener):
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
         net.send("join", self.local_players_names)
-        apygame.setView(LobbyView(str(self.conn.address)))
+        apygame.setView(LobbyView(str(self.address)))
 
     def Network_disconnected(self):
         log().info("Disconnected from the server")
@@ -98,10 +98,10 @@ class ClientNetworkListener(net.NetworkListener):
 async def run_client(host_address: net.NetworkAddress, local_players_names: list, control_functions: list):
     try:
         client = await first_completed(
-            net.connect_to_server(host_address, lambda conn: ClientNetworkListener(conn, local_players_names, control_functions)),
+            net.connect_to_server(host_address, lambda address: ClientNetworkListener(address, local_players_names, control_functions)),
             windowfunctions.wait_screen("Connecting to server")
             )
-        if not isinstance(client, net.EndPoint):
+        if not net.is_connected(host_address):
             log().info("Connection aborted")
             return
         
