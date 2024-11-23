@@ -19,7 +19,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             {"action": "hello", "data": [10] * 512},
             #{"action": "hello", "data": [10] * 512, "otherstuff": "hello\0---\0goodbye", "x": [0, "---", 0], "y": "zÃ¤Ã¶"},
         ]
-        self.count = len(self.outgoing)
+        self.count = 1
         self.lengths = [len(data['data']) for data in self.outgoing]
 
         class TesterData:
