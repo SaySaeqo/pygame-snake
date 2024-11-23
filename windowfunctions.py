@@ -64,6 +64,9 @@ class MenuDrawer:
 
     def draw(self, text: str, font_size=32, align=Align.TOP):
         surface = text2surface(text, font_size)
+        return self.draw_surface(surface, align)
+    
+    def draw_surface(self, surface: pygame.Surface, align=Align.TOP):
         merge_into_board(surface, align, self.offset)
         self.offset += surface.get_height()
         return self
@@ -237,10 +240,7 @@ def keyinputbox(title):
     await_keypress(operate)
     return chosen_key
 
-def leaderboard(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
-    OFFSET = 30
-    title_sur = text2surface("LEADERBOARD", 72, True)
-    lines_sur = text2surface("Empty")
+def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
     try:
         lines = []
         with open(filepath, "r+") as file:
@@ -249,47 +249,16 @@ def leaderboard(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_k
             lines = sorted(lines, key=sort_key, reverse=True)
             lines = unique(lines, key=name_key)
             lines = lines[:max_results]
-            lines_sur = text2surface("".join(lines))
 
             file.seek(0)
             file.writelines(lines)
             file.truncate()
 
+            return "".join(lines) or "Empty"
+
     except FileNotFoundError as e:
-        ...
-    
-    running = True
-    offset_multiplier = 0
-    title_height = title_sur.get_height() + 2*OFFSET
-    viewable_list_height = pygame.display.get_surface().get_height() - title_height
+        return "Empty"
 
-    def operate(key):
-        nonlocal running
-        if key in (pygame.K_RETURN, pygame.K_SPACE):
-            running = False
-            return True
-        return False
-    
-    def operate_keys(keys):
-        nonlocal offset_multiplier
-        if keys[pygame.K_UP]:
-            if offset_multiplier == 0:
-                return False
-            offset_multiplier = max(0, offset_multiplier - 1)
-            return True
-        if keys[pygame.K_DOWN]:
-            if lines_sur.get_height() < viewable_list_height:
-                return False
-            offset_multiplier = min((lines_sur.get_height()-viewable_list_height)//OFFSET, offset_multiplier + 1)
-            return True
-        return False
-
-    while running:
-        pygame.display.get_surface().fill(Color.black)
-        offset = title_height - offset_multiplier*OFFSET
-        merge_into_board(lines_sur, Align.TOP, offset)
-        merge_into_board(title_sur, Align.TOP, OFFSET)
-        await_keypress(operate, operate_keys)
 
 async def network_room(players, host):
     clock = apygame.Clock()

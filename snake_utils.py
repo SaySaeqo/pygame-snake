@@ -8,7 +8,6 @@ from decisionfunctions import based_on_keys
 import apygame
 import MyPodSixNet as net
 import logging
-import asyncio
 
 def log():
     return logging.getLogger("snake")
@@ -288,6 +287,42 @@ class ReadyGoView(apygame.PyGameView):
     async def async_operation(self):
         net.send("game", self.state.to_json())
 
+
+class ScrollableView(apygame.PyGameView):
+        
+        SOME_OFFSET = 30
+        SCROLL_SPEED = 10
+    
+        def __init__(self, title: str, scrollable: str, next_view: apygame.PyGameView):
+            self.title = text2surface(title, 72)
+            self.scrollable = text2surface(scrollable)
+            self.next_view = next_view
+            self.scroll = 0
+
+        @property
+        def visible_height(self):
+            return pygame.display.get_surface().get_height() - 3 * self.SOME_OFFSET - self.title.get_height()
+    
+        def update(self, delta):
+            MenuDrawer(self.SOME_OFFSET)\
+                .draw_surface(self.title)\
+                .add_space(self.SOME_OFFSET)\
+                .draw_surface(self.scrollable.subsurface(pygame.Rect(0, self.scroll*self.SCROLL_SPEED, self.scrollable.get_width(), self.visible_height)))
+            
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_DOWN]:
+                self.scroll = min(self.scroll + 1, (self.scrollable.get_height()-self.visible_height)//self.SCROLL_SPEED)
+            if keys[pygame.K_UP]:
+                self.scroll = max(0, self.scroll - 1)
+
+        def handle_event(self, event):
+            super().handle_event(event)
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
+                    apygame.setView(self.next_view)
+                
+
+
 class SnakeMenu:
 
     @dataclass
@@ -364,7 +399,7 @@ class SnakeMenu:
         except FileNotFoundError:
             ...
 
-    def run(self):
+    async def run(self):
         while True:
             self.choice, option = menu("SNAKE", self.menu_options, self.choice)
             if option == "PLAY":
@@ -373,7 +408,8 @@ class SnakeMenu:
             if option == "EXIT":
                 sys.exit()
             if option == "LEADERBOARD":
-                leaderboard("leaderboard.data")
+                apygame.setView(ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"), None))
+                await apygame.init(60)
             if option.startswith("PLAYER "):
                 which_player = int(option[7]) - 1
                 result = inputbox("Write your name:", self.names[which_player], lambda ch: not ch in " +:")

@@ -10,7 +10,7 @@ async def main():
     snake_menu = SnakeMenu()
 
     while True:
-        snake_menu.run()
+        await snake_menu.run()
 
         options = Options(
             diameter=30,
