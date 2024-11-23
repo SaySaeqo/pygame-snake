@@ -1,8 +1,6 @@
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass, field, asdict
 from constants import *
 from gameobjects import *
-
 
 @dataclass
 class Options:
@@ -19,33 +17,21 @@ class Options:
     resolution: tuple[int, int] = (800, 600)
 
     def to_json(self):
-        return {
-            "fps": self.fps,
-            "diameter": self.diameter,
-            "speed": self.speed,
-            "time_limit": self.time_limit,
-            "rotation_power": self.rotation_power,
-            "resolution": self.resolution
-        }
+        return asdict(self)
     
     @classmethod
     def from_json(cls, data):
-        return cls(
-            fps=data["fps"],
-            diameter=data["diameter"],
-            speed=data["speed"],
-            time_limit=data["time_limit"],
-            rotation_power=data["rotation_power"],
-            resolution=data["resolution"]
-        )
+        opt = cls()
+        for key in data.keys():
+            if hasattr(opt, key):
+                setattr(opt, key, data[key])
+        return opt
     
     def copy_values(self, other):
-        self.fps = other.fps
-        self.diameter = other.diameter
-        self.speed = other.speed
-        self.time_limit = other.time_limit
-        self.rotation_power = other.rotation_power
-        self.resolution = other.resolution
+        other = asdict(other)
+        for key in other.keys():
+            if hasattr(self, key):
+                setattr(self, key, other[key])
 
 @dataclass
 class GameState:
