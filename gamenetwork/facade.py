@@ -28,41 +28,41 @@ class NetworkListener:
 
 class GeneralProtocol(asyncio.Protocol):
     
-        def __init__(self, network_listener_factory):
-            self.network_listener_factory = network_listener_factory
-    
-        def connection_made(self, transport: asyncio.Transport):
-            ip, port = transport.get_extra_info('peername')[:2]
-            if not all(map(lambda x: x.isdigit() , ip.split("."))):
-                ip = "localhost"
-            self.transport_address = ip, port
-            self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
-            self.network_listener.connected()
-            global connections
-            connections[self.transport_address] = (transport, self)
-    
-        def data_received(self, data):
-            data = filter(lambda x: x, data.split(END_SEQ))
-            data = map(lambda x: json.loads(x.decode()), data)
-            data = utils.unique(list(data), lambda x: x["action"])
-            for d in data:
-                self.network_listener.interceptor(d)
-                handler_name = "action_" + d["action"]
-                if hasattr(self.network_listener, handler_name):
-                    getattr(self.network_listener, handler_name)(d["data"])
-    
-        def connection_lost(self, exc):
-            if exc:
-                LOG.error("Connection lost due to error: {}".format(exc))
-            self.network_listener.disconnected()
-            global connections
-            try:
-                if not connections[self.transport_address][0].is_closing():
-                    LOG.error(f"Connection lost but not closed: {self.transport_address}")
-                    connections[self.transport_address][0].close()
-                del connections[self.transport_address]
-            except KeyError:
-                pass
+    def __init__(self, network_listener_factory):
+        self.network_listener_factory = network_listener_factory
+
+    def connection_made(self, transport: asyncio.Transport):
+        ip, port = transport.get_extra_info('peername')[:2]
+        if not all(map(lambda x: x.isdigit() , ip.split("."))):
+            ip = "localhost"
+        self.transport_address = ip, port
+        self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
+        self.network_listener.connected()
+        global connections
+        connections[self.transport_address] = (transport, self)
+
+    def data_received(self, data):
+        data = filter(lambda x: x, data.split(END_SEQ))
+        data = map(lambda x: json.loads(x.decode()), data)
+        data = utils.unique(list(data), lambda x: x["action"])
+        for d in data:
+            self.network_listener.interceptor(d)
+            handler_name = "action_" + d["action"]
+            if hasattr(self.network_listener, handler_name):
+                getattr(self.network_listener, handler_name)(d["data"])
+
+    def connection_lost(self, exc):
+        if exc:
+            LOG.error("Connection lost due to error: {}".format(exc))
+        self.network_listener.disconnected()
+        global connections
+        try:
+            if not connections[self.transport_address][0].is_closing():
+                LOG.error(f"Connection lost but not closed: {self.transport_address}")
+                connections[self.transport_address][0].close()
+            del connections[self.transport_address]
+        except KeyError:
+            pass
 
 
 async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
