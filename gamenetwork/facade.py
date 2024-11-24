@@ -8,7 +8,7 @@ LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
 
 connections = {}
-serving_task = None
+server = None
 
 class NetworkListener:
     def __init__(self, address: tuple[str, int]) -> None:
@@ -71,9 +71,8 @@ async def connect_to_server(address: tuple[str, int], network_listener_factory =
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
+    global server
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
-    global serving_task
-    serving_task = asyncio.create_task(server.serve_forever())
 
 def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
@@ -103,7 +102,7 @@ def close():
     for transport, _ in connections.values():
         transport.write_eof()
     connections.clear()
-    global serving_task
-    if serving_task:
-        serving_task.cancel()
-    serving_task = None
+    global server
+    if server:
+        server.close()
+    server = None
