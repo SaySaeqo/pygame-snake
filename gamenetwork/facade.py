@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import json
 import utils
 import logging
@@ -96,6 +97,7 @@ def is_connected(address: tuple[str, int]):
     except KeyError:
         return False
 
+@atexit.register
 def close():
     global connections
     for transport, _ in connections.values():
