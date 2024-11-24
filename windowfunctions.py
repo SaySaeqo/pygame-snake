@@ -5,7 +5,7 @@ from utils import unique
 from screeninfo import get_monitors
 import apygame
 from math import floor
-import MyPodSixNet as net
+import gamenetwork as net
 
 WINDOWS_FUNCTIONS_FPS = 10
 

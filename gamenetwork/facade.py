@@ -3,7 +3,7 @@ import json
 import utils
 import logging
 
-LOG = logging.getLogger("MyPodSixNet")
+LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
 
 connections = {}
@@ -13,16 +13,16 @@ class NetworkListener:
     def __init__(self, address: tuple[str, int]) -> None:
         self.address = address
 
-    def Network_default(self, data):
+    def action_default(self, data):
         LOG.debug("Action 'default' from " + str(self.address))
 
-    def Network(self, data):
+    def interceptor(self, data):
         LOG.debug(f"Action {data['action']} from " + str(self.address))
 
-    def Network_connected(self):
+    def connected(self):
         LOG.debug("Connected to " + str(self.address))
 
-    def Network_disconnected(self):
+    def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
 
 class GeneralProtocol(asyncio.Protocol):
@@ -38,7 +38,7 @@ class GeneralProtocol(asyncio.Protocol):
                 ip = "localhost"
             self.transport_address = ip, port
             self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
-            self.network_listener.Network_connected()
+            self.network_listener.connected()
             global connections
             connections[self.transport_address] = (transport, self.network_listener)
     
@@ -47,15 +47,15 @@ class GeneralProtocol(asyncio.Protocol):
             data = map(lambda x: json.loads(x.decode()), data)
             data = utils.unique(list(data), lambda x: x["action"])
             for d in data:
-                handler_name = "Network_" + d["action"]
+                self.network_listener.interceptor(d)
+                handler_name = "action_" + d["action"]
                 if hasattr(self.network_listener, handler_name):
                     getattr(self.network_listener, handler_name)(d["data"])
-                self.network_listener.Network(d)
     
         def connection_lost(self, exc):
             if exc:
                 LOG.error("Connection lost due to error: {}".format(exc))
-            self.network_listener.Network_disconnected()
+            self.network_listener.disconnected()
             global connections
             try:
                 if not connections[self.transport_address][0].is_closing():
@@ -85,7 +85,6 @@ def send(action: str, data = None, to: tuple[str, int] = None):
             send_with_transport(connections[to][0], action, data)
         except KeyError:
             LOG.error(f"Could not send message to {to}. No such connection.")
-            pass
 
 def send_with_transport(transport: asyncio.WriteTransport, action: str, data = None):
     transport.write(json.dumps({

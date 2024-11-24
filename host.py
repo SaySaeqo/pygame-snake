@@ -1,5 +1,5 @@
 import asyncio
-import MyPodSixNet as net
+import gamenetwork as net
 from decisionfunctions import control_snake
 from snake_utils import *
 import utils
@@ -14,16 +14,16 @@ class HostNetworkListener(net.NetworkListener):
         self.players = local_players
         self.game_state = game_state
 
-    def Network_join(self, names):
+    def action_join(self, names):
         new_players = [[name, self.address] for name in names]
         self.players.extend(new_players)
 
-    def Network_control(self, data):
+    def action_control(self, data):
         idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self.address)
         player = self.game_state.players[idx]
         player.decision = data["direction"]
 
-    def Network_disconnected(self):
+    def disconnected(self):
         log().info("Player disconnected")
         for i in range(len(self.players)):
             if self.players[i][1] == self.address:

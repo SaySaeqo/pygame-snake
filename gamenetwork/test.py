@@ -32,26 +32,26 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.endpointTester_data = endpointData = TesterData()
         
         class ServerTester(NetworkListener):
-            def Network_connected(self):
+            def connected(self):
                 serverData.connected = True
 
-            def Network_hello(self, data):
+            def action_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
                 send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.address)
 
-            def Network_disconnected(self):
+            def disconnected(self):
                 serverData.connected = False
         
         class EndPointTester(NetworkListener):
-            def Network_connected(self):
+            def connected(self):
                 endpointData.connected = True
             
-            def Network_gotit(self, data):
+            def action_gotit(self, data):
                 endpointData.received.append(data)
                 endpointData.count += 1
 
-            def Network_disconnected(self):
+            def disconnected(self):
                 endpointData.connected = False
         
         server_adress = ("localhost", 31426)

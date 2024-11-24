@@ -1,4 +1,4 @@
-import MyPodSixNet as net
+import gamenetwork as net
 import snake_utils
 from utils import *
 from snake_utils import *
@@ -68,13 +68,13 @@ class ClientNetworkListener(net.NetworkListener):
         self.control_functions = control_functions
         self.snake_tasks = []
 
-    def Network_lobby(self, players):
+    def action_lobby(self, players):
         ClientNetworkData().players = players
 
-    def Network_game(self, game_state):
+    def action_game(self, game_state):
         ClientNetworkData().game_state = GameState.from_json(game_state)
 
-    def Network_start(self, options):
+    def action_start(self, options):
         log().info("Game is starting")
         options = Options.from_json(options)
         pygame.display.set_mode(options.resolution, pygame.FULLSCREEN if options.resolution == get_screen_size() else 0)
@@ -82,7 +82,7 @@ class ClientNetworkListener(net.NetworkListener):
                             for name, function in zip(self.local_players_names, self.control_functions)]
         apygame.setView(ClientReadyGoView(ClientGameView()))
 
-    def Network_score(self, game_state):
+    def action_score(self, game_state):
         for task in self.snake_tasks:
             task.cancel()
         game_state = GameState.from_json(game_state)
@@ -91,7 +91,7 @@ class ClientNetworkListener(net.NetworkListener):
         net.send("join", self.local_players_names)
         apygame.setView(LobbyView(self.address))
 
-    def Network_disconnected(self):
+    def disconnected(self):
         log().info("Disconnected from the server")
         apygame.setView(None)
 

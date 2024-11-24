@@ -1,6 +1,6 @@
 import pygame
 import apygame
-import MyPodSixNet as net
+import gamenetwork as net
 
 class Direction:
     FORWARD = 0

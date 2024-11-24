@@ -7,7 +7,7 @@ from windowfunctions import *
 from dataclasses import dataclass, field
 from decisionfunctions import based_on_keys
 import apygame
-import MyPodSixNet as net
+import gamenetwork as net
 import logging
 
 def log():
