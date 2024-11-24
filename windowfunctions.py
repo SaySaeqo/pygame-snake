@@ -51,10 +51,10 @@ def merge_into_board(surface: pygame.Surface, align=Align.TOP, offset=0):
     pygame.display.get_surface().blit(surface, (x, y))
 
 def title(text: str, align=Align.TOP, font_size=32, offset=0):
-        
-        if not text: return
-        surface = text2surface(text, font_size)
-        merge_into_board(surface, align, offset)
+
+    if not text: return
+    surface = text2surface(text, font_size)
+    merge_into_board(surface, align, offset)
 
 class MenuDrawer:
 
@@ -292,15 +292,14 @@ async def network_room(players, host):
 async def wait_screen(msg):
     clock = apygame.AsyncClock()
     count = 0
-    frame_time = 1/WINDOWS_FUNCTIONS_FPS
     while True:
+        delta = await clock.tick(WINDOWS_FUNCTIONS_FPS)
         pygame.display.get_surface().fill(Color.black)
         title(f"{msg}{'.'*floor(count)}", Align.CENTER)
-        count = (count + frame_time) % 4
+        count = (count + delta) % 4
         pygame.display.update()
-        await clock.tick(WINDOWS_FUNCTIONS_FPS)
         for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+            if event.type == pygame.QUIT:
                 sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+            if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
                 return

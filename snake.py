@@ -1,4 +1,3 @@
-from windowfunctions import *
 from decisionfunctions import control_snake
 import asyncio
 import logging
