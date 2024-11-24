@@ -1,7 +1,7 @@
 # gamenetwork - lighweight multiplayer networking library
 Gamenetwork is lightweight library to be used mostly with pygame, but can work also in other scenarios.  
-It assumes that there will be not more than one server or client running per python instance so made connections for simplicity of use are made global variables.  
-Simply usage predicts connecting to the server by ip, port pair (or creating one), sending action-based messages and closing connections before exit.
+It assumes that there will be not more than one server or client running per python instance so connections for simplicity of usage are made global variables.  
+Simply usage predicts connecting to the server (or creating one) by ip-port tuple, sending action-based messages and closing connections before exit.
 
 # example code usage
 
