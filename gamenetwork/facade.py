@@ -13,8 +13,8 @@ class NetworkListener:
     def __init__(self, address: tuple[str, int]) -> None:
         self.address = address
 
-    def action_default(self, data):
-        LOG.debug("Action 'default' from " + str(self.address))
+    def action_someexample(self, data):
+        LOG.debug("Action 'someexample' from " + str(self.address))
 
     def interceptor(self, data):
         LOG.debug(f"Action {data['action']} from " + str(self.address))
@@ -29,10 +29,8 @@ class GeneralProtocol(asyncio.Protocol):
     
         def __init__(self, network_listener_factory):
             self.network_listener_factory = network_listener_factory
-            pass
     
         def connection_made(self, transport: asyncio.Transport):
-            self.transport = transport
             ip, port = transport.get_extra_info('peername')[:2]
             if not all(map(lambda x: x.isdigit() , ip.split("."))):
                 ip = "localhost"
@@ -40,7 +38,7 @@ class GeneralProtocol(asyncio.Protocol):
             self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
             self.network_listener.connected()
             global connections
-            connections[self.transport_address] = (transport, self.network_listener)
+            connections[self.transport_address] = (transport, self)
     
         def data_received(self, data):
             data = filter(lambda x: x, data.split(END_SEQ))

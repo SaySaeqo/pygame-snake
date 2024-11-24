@@ -63,7 +63,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         for o in self.outgoing:
             send_with_transport(self.sender[0], o["action"], o["data"])
 
-        await asyncio.sleep(.1)
+        await asyncio.sleep(.01)
         
         self.assertTrue(self.serverTester_data.connected, "Server is not connected")
         self.assertTrue(self.endpointTester_data.connected, "Endpoint is not connected")
@@ -85,9 +85,8 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             
 
         self.sender[0].abort()
-        await asyncio.sleep(0.1)
-        await asyncio.sleep(0.1)
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
+        
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
 
     async def asyncTearDown(self):
