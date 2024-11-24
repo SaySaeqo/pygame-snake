@@ -72,6 +72,8 @@ async def connect_to_server(address: tuple[str, int], network_listener_factory =
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     global server
+    if server:
+        raise Exception("Only one server can be started at a time.")
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
 
 def send(action: str, data = None, to: tuple[str, int] = None):
@@ -98,11 +100,11 @@ def is_connected(address: tuple[str, int]):
 
 @atexit.register
 def close():
-    global connections
-    for transport, _ in connections.values():
-        transport.write_eof()
-    connections.clear()
     global server
     if server:
         server.close()
     server = None
+    global connections
+    for transport, _ in connections.values():
+        transport.write_eof()
+    connections.clear()
