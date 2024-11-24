@@ -55,7 +55,7 @@ class ClientReadyGoView(snake_utils.ReadyGoView):
         self.state = ClientNetworkData().game_state
         super().update(delta)
 
-    async def async_operation(self):
+    async def do_async(self):
         pass
 
 
@@ -107,9 +107,7 @@ async def run_client(host_address: tuple[str, int], local_players_names: list, c
         
         net.send("join", local_players_names)
 
-        apygame.setView(LobbyView(host_address))
-
-        await apygame.init(fps=60)
+        await apygame.run_async(LobbyView(host_address))
         
     except OSError as e:
         log().error(e)

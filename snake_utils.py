@@ -129,7 +129,7 @@ class GameView(apygame.PyGameView):
             pause()
             draw_board(self.state)
 
-    async def async_operation(self):
+    async def do_async(self):
         net.send("game", self.state.to_json())
 
 class ReadyGoView(apygame.PyGameView):
@@ -149,7 +149,7 @@ class ReadyGoView(apygame.PyGameView):
         else:
             apygame.setView(self.next_view)
 
-    async def async_operation(self):
+    async def do_async(self):
         net.send("game", self.state.to_json())
 
 

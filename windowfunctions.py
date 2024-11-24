@@ -261,7 +261,7 @@ def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1
 
 
 async def network_room(players, host):
-    clock = apygame.Clock()
+    clock = apygame.AsyncClock()
     while True:
 
         players_phrase = ""
@@ -290,7 +290,7 @@ async def network_room(players, host):
                 return False
             
 async def wait_screen(msg):
-    clock = apygame.Clock()
+    clock = apygame.AsyncClock()
     count = 0
     frame_time = 1/WINDOWS_FUNCTIONS_FPS
     while True:

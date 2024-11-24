@@ -83,8 +83,7 @@ class SnakeMenu:
             if option == "EXIT":
                 sys.exit()
             if option == "LEADERBOARD":
-                apygame.setView(ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"), None))
-                await apygame.init(60)
+                apygame.run(ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"), None))
             if option.startswith("PLAYER "):
                 which_player = int(option[7]) - 1
                 result = inputbox("Write your name:", self.names[which_player], lambda ch: not ch in " +:")

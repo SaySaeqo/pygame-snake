@@ -16,13 +16,13 @@ def based_on_keys(left, right):
     return function
 
 async def control_snake(function, snake, fps):
-    clock = apygame.Clock()
+    clock = apygame.AsyncClock()
     while snake.alive:
         await clock.tick(fps)
         snake.decision = function()
 
 async def send_decision(address: tuple[str, int], name, fps, function):
-    clock = apygame.Clock()
+    clock = apygame.AsyncClock()
     while net.is_connected(address):
         await clock.tick(fps)
         net.send("control", {"name": name, "direction": function()}, to=address)

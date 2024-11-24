@@ -3,16 +3,15 @@ from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
-import time
 
-class Clock:
+class AsyncClock:
     def __init__(self, time_func=pygame.time.get_ticks):
         self.time_func = time_func
         self.last_tick = time_func() or 0
  
     async def tick(self, fps=0):
         """
-        It is not perfect 1/fps long tick, can be around this number, specially for windows
+        It is not perfect 1/fps long tick, can be around this number, especially for windows
         """
         if 0 >= fps:
             return
@@ -36,10 +35,8 @@ class PyGameView:
         if (event.type == pygame.QUIT):
             sys.exit()
 
-    async def async_operation(self):
+    async def do_async(self):
         pass
-        
-
 
 @singleton
 class CurrentPyGameView:
@@ -47,14 +44,25 @@ class CurrentPyGameView:
     view = PyGameView()
     result = None
 
-    async def update(self, delta):
+    async def update_async(self, delta):
         if self.view is None:
             return
         self.view.update(delta)
         pygame.display.flip()
         for event in pygame.event.get():
             self.view.handle_event(event)
-        await self.view.async_operation()
+        await self.view.do_async()
+        if self.closing:
+            self.view = None
+            self.closing = False
+
+    def update(self, delta):
+        if self.view is None:
+            return
+        self.view.update(delta)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            self.view.handle_event(event)
         if self.closing:
             self.view = None
             self.closing = False
@@ -66,15 +74,35 @@ class CurrentPyGameView:
             self.view = view
             self.closing = False
 
+# just to make sure that only one view is running at the same time
+mutex = False
+def grab_mutex():
+    global mutex
+    if mutex:
+        raise Exception("Cannot run multiple PyGame views at the same time")
+    mutex = True
+def release_mutex():
+    global mutex
+    mutex = False
+############################
 
-async def init(fps=60):
-    """
-    To be used once after creating pygame window.
-    """
-    clock = Clock()
+async def run_async(view: PyGameView, fps=60):
+    grab_mutex()
+    setView(view)
+    clock = AsyncClock()
     while CurrentPyGameView().view:
         delta = await clock.tick(fps)
-        await CurrentPyGameView().update(delta)
+        await CurrentPyGameView().update_async(delta)
+    release_mutex()
+
+def run(view: PyGameView, fps=60):
+    grab_mutex()
+    setView(view)
+    clock = pygame.time.Clock()
+    while CurrentPyGameView().view:
+        delta = clock.tick(fps) / 1000.0
+        CurrentPyGameView().update(delta)
+    release_mutex()
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
