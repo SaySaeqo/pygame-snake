@@ -119,6 +119,9 @@ class GameView(apygame.PyGameView):
         for player in st.alive_players():
             player.rotation_power = Game.rotation_power + int(st.time_passed / 10)
 
+        for snake, function in zip(st.players[:Config().number_of_players], Config().control_functions):
+            snake.decision = function()
+
 
     def handle_event(self, event):
         if event.type == pygame.QUIT:

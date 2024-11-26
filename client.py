@@ -6,7 +6,6 @@ import windowfunctions
 import apygame
 from singleton_decorator import singleton
 from dataclasses import dataclass
-import decisionfunctions
 
 @singleton
 @dataclass
@@ -45,6 +44,9 @@ class ClientGameView(apygame.PyGameView):
     def update(self, delta):
         draw_board(ClientNetworkData().game_state)
 
+        for name, function in zip(Config().active_players_names, Config().control_functions):
+            net.send("control", {"name": name, "direction": function()})
+
 class ClientReadyGoView(snake_utils.ReadyGoView):
 
     def __init__(self, next_view: apygame.PyGameView):
@@ -59,12 +61,6 @@ class ClientReadyGoView(snake_utils.ReadyGoView):
 
 
 class ClientNetworkListener(net.NetworkListener):
-    
-    def __init__(self, address, local_players_names: list, control_functions: list):
-        super().__init__(address)
-        self.local_players_names = local_players_names
-        self.control_functions = control_functions
-        self.snake_tasks = []
 
     def action_lobby(self, players):
         ClientNetworkData().players = players
@@ -75,27 +71,23 @@ class ClientNetworkListener(net.NetworkListener):
     def action_start(self, resolution):
         log().info("Game is starting")
         pygame.display.set_mode(resolution, pygame.FULLSCREEN if resolution == get_screen_size() else 0)
-        self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.address, name, function))
-                            for name, function in zip(self.local_players_names, self.control_functions)]
         apygame.setView(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
-        for task in self.snake_tasks:
-            task.cancel()
         game_state = GameState.from_json(game_state)
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
-        net.send("join", self.local_players_names)
+        net.send("join", Config().active_players_names)
         apygame.setView(LobbyView(self.address))
 
     def disconnected(self):
         log().info("Disconnected from the server")
         apygame.closeView()
 
-async def run_client(host_address: tuple[str, int], local_players_names: list, control_functions: list):
+async def run_client(host_address: tuple[str, int]):
     try:
         await first_completed(
-            net.connect_to_server(host_address, lambda address: ClientNetworkListener(address, local_players_names, control_functions)),
+            net.connect_to_server(host_address, lambda address: ClientNetworkListener(address)),
             apygame.run_async(WaitingView("Connecting to server"))
             )
     except OSError as e:
@@ -109,7 +101,7 @@ async def run_client(host_address: tuple[str, int], local_players_names: list, c
         log().info("Connection aborted")
         return
         
-    net.send("join", local_players_names)
+    net.send("join", Config().active_players_names)
     await LobbyView(host_address)
     net.close()
     

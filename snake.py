@@ -6,4 +6,6 @@ import asyncio
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     log().info("Starting the game")
-    asyncio.run(show_menu("SNAKE", SnakeMenu().main_menu))
+    Config().load_from_file()
+    create_window("Snake")
+    asyncio.run(show_menu("SNAKE", main_menu))

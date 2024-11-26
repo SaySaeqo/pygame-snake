@@ -1,6 +1,5 @@
 import asyncio
 import gamenetwork as net
-from decisionfunctions import control_snake
 from snake_utils import *
 import utils
 import windowfunctions
@@ -29,28 +28,22 @@ class HostNetworkListener(net.NetworkListener):
             if self.players[i][1] == self.address:
                 del self.players[i]
         
-async def run_host(local_players_names: list, control_functions: list):
+async def run_host():
     server_address = (None, 31426)
     host = f"{utils.get_my_ip()}:{server_address[1]}"
-    local_players_num = len(local_players_names)
-    players = [[name, server_address] for name in local_players_names]
+    players = [[name, server_address] for name in Config().active_players_names]
     game_state = GameState()
 
     await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
     
     while True:
         should_start = await windowfunctions.network_room(players, host)
-        log().debug("Should start: %s", should_start)
-
         if not should_start:
             break
 
         game_state.init(len(players))
         net.send("start", pygame.display.get_window_size())
         await asyncio.sleep(0.2)
-
-        for snake, func in zip(game_state.players[:local_players_num], control_functions):
-            asyncio.create_task(control_snake(func, snake))
 
         await ReadyGoView(game_state,GameView(game_state))
 
@@ -59,7 +52,7 @@ async def run_host(local_players_names: list, control_functions: list):
         show_scores(game_state.scores, players)
         game_state.reset()
         players.clear()
-        players.extend([name, server_address] for name in local_players_names)
+        players.extend([name, server_address] for name in Config().active_players_names)
 
     net.close()
 
