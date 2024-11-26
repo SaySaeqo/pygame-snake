@@ -7,7 +7,6 @@ import apygame
 from singleton_decorator import singleton
 from dataclasses import dataclass
 import decisionfunctions
-from icecream import ic
 
 @singleton
 @dataclass
@@ -61,7 +60,6 @@ class ClientReadyGoView(snake_utils.ReadyGoView):
 
 class ClientNetworkListener(net.NetworkListener):
     
-
     def __init__(self, address, local_players_names: list, control_functions: list):
         super().__init__(address)
         self.local_players_names = local_players_names
@@ -74,11 +72,10 @@ class ClientNetworkListener(net.NetworkListener):
     def action_game(self, game_state):
         ClientNetworkData().game_state = GameState.from_json(game_state)
 
-    def action_start(self, options):
+    def action_start(self, resolution):
         log().info("Game is starting")
-        options = Options.from_json(options)
-        pygame.display.set_mode(options.resolution, pygame.FULLSCREEN if options.resolution == get_screen_size() else 0)
-        self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.address, name, options.fps, function))
+        pygame.display.set_mode(resolution, pygame.FULLSCREEN if resolution == get_screen_size() else 0)
+        self.snake_tasks = [asyncio.create_task(decisionfunctions.send_decision(self.address, name, function))
                             for name, function in zip(self.local_players_names, self.control_functions)]
         apygame.setView(ClientReadyGoView(ClientGameView()))
 
@@ -99,19 +96,21 @@ async def run_client(host_address: tuple[str, int], local_players_names: list, c
     try:
         await first_completed(
             net.connect_to_server(host_address, lambda address: ClientNetworkListener(address, local_players_names, control_functions)),
-            windowfunctions.wait_screen("Connecting to server")
+            apygame.run_async(WaitingView("Connecting to server"))
             )
     except OSError as e:
         log().error(e)
         log().info("Could not connect to the server")
         return
+    finally:
+        await apygame.wait_closed()
     
     if not net.is_connected(host_address):
         log().info("Connection aborted")
         return
         
     net.send("join", local_players_names)
-    await apygame.run_async(LobbyView(host_address))
+    await LobbyView(host_address)
     net.close()
     
 

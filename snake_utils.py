@@ -2,7 +2,7 @@ import sys
 import pygame
 from dto import *
 from gameobjects import *
-from constants import Color
+from constants import *
 from windowfunctions import *
 from dataclasses import dataclass, field
 from decisionfunctions import based_on_keys
@@ -51,18 +51,16 @@ def show_scores(scores, names):
 
 class GameView(apygame.PyGameView):
 
-    def __init__(self, game_state: GameState, options: Options):
+    def __init__(self, game_state: GameState):
         self.state = game_state
-        self.options = options
 
     def update(self, delta):
         st = self.state
-        options = self.options
 
         draw_board(self.state)
 
         for idx, player in st.enumarate_alive_players():
-            player.move(options.diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
+            player.move(Game.diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
             # region COLLISION_CHECK
             # with fruits
             for fruit in st.fruits:
@@ -108,18 +106,18 @@ class GameView(apygame.PyGameView):
         st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - delta)
         st.destroying_event_timer = max(0, st.destroying_event_timer - delta)
         if st.fruit_event_timer > 5:
-            st.fruits.append(Fruit.at_random_position(options.diameter / 2))
+            st.fruits.append(Fruit.at_random_position(Game.diameter / 2))
             st.fruit_event_timer = 0
-        if st.time_passed > options.time_limit:
+        if st.time_passed > Game.time_limit:
             st.wall_event_timer += delta
-            if st.wall_event_timer > (options.time_limit**2) / (st.time_passed**2):
-                st.walls += [Wall.at_random_position(options.diameter)]
+            if st.wall_event_timer > (Game.time_limit**2) / (st.time_passed**2):
+                st.walls += [Wall.at_random_position(Game.diameter)]
                 st.wall_event_timer = 0
 
         # something to make it more fun!
-        st.current_speed = options.speed + 2 * int(1 + st.time_passed / 10)
+        st.current_speed = Game.speed + 2 * int(1 + st.time_passed / 10)
         for player in st.alive_players():
-            player.rotation_power = options.rotation_power + int(st.time_passed / 10)
+            player.rotation_power = Game.rotation_power + int(st.time_passed / 10)
 
 
     def handle_event(self, event):
@@ -263,3 +261,18 @@ class MenuView(apygame.PyGameView):
                     apygame.closeViewWithResult(self.choice)
                 elif event.key == pygame.K_ESCAPE:
                     apygame.closeView()
+
+class WaitingView(apygame.PyGameView):
+    
+    def __init__(self, msg: str):
+        self.msg = msg
+        self.count = 0.0
+
+    def update(self, delta):
+        title(self.msg + "."*floor(self.count), Align.CENTER)
+        self.count = (self.count + delta) % 4
+
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+            apygame.closeView()

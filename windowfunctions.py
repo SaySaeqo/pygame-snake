@@ -182,18 +182,3 @@ async def network_room(players, host):
                 return True
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 return False
-            
-async def wait_screen(msg):
-    clock = apygame.AsyncClock()
-    count = 0
-    while True:
-        delta = await clock.tick(WINDOWS_FUNCTIONS_FPS)
-        pygame.display.get_surface().fill(Color.black)
-        title(f"{msg}{'.'*floor(count)}", Align.CENTER)
-        count = (count + delta) % 4
-        pygame.display.update()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-            if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
-                return

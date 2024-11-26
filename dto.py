@@ -1,37 +1,55 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from constants import *
+from decisionfunctions import based_on_keys
 from gameobjects import *
+from singleton_decorator import singleton
+import windowfunctions
 
 @dataclass
-class Options:
-    """
-    :param diameter: size of things in pixels
-    :param speed: diameters per second
-    :param time_limit: seconds
-    """
-    fps: int = 60
-    diameter: int = 30
-    speed: int = 4
-    time_limit: int = 60
-    rotation_power: int = 4
-    resolution: tuple[int, int] = (800, 600)
+class Control:
+    left: int
+    right: int 
+@singleton
+class Config:
+    names = ["snake", "snake2", "snake3"]
+    number_of_players = 1
+    controls = [Control(pygame.K_LEFT, pygame.K_RIGHT), Control(pygame.K_a, pygame.K_d), Control(pygame.K_j, pygame.K_l)]
+    FILE_NAME = "config.data"
 
-    def to_json(self):
-        return asdict(self)
-    
-    @classmethod
-    def from_json(cls, data):
-        opt = cls()
-        for key in data.keys():
-            if hasattr(opt, key):
-                setattr(opt, key, data[key])
-        return opt
-    
-    def copy_values(self, other):
-        other = asdict(other)
-        for key in other.keys():
-            if hasattr(self, key):
-                setattr(self, key, other[key])
+    @property
+    def active_players_names(self):
+        return self.names[:self.number_of_players]
+
+    @property
+    def control_functions(self):
+        return [based_on_keys(control.left, control.right) for control in self.controls]
+
+    def save_to_file(self):
+        with open(self.FILE_NAME, "w") as file:
+            for idx, name in enumerate(self.names):
+                file.write(f"player {idx+1} name: {name}\n")
+            for control in self.controls:
+                file.write(f"player {self.controls.index(control)+1} controls: {pygame.key.name(control.left)} {pygame.key.name(control.right)}\n")
+            file.write(f"resolution: {pygame.display.get_window_size()[0]} {pygame.display.get_window_size()[1]}\n")
+
+    def load_from_file(self):
+        try:
+            with open(self.FILE_NAME, "r") as file:
+                for line in file:
+                    if line.startswith("player"):
+                        pygame.init()
+                        parts = line.split()
+                        player = int(parts[1]) - 1
+                        if (parts[2] == "name:"):
+                            self.names[player] = " ".join(parts[3:])
+                        if (parts[2] == "controls:"):
+                            self.controls[player].left = pygame.key.key_code(parts[3])
+                            self.controls[player].right = pygame.key.key_code(parts[4])
+                    if line.startswith("resolution"):
+                        parts = line.split()
+                        windowfunctions.create_window("Snake", int(parts[1]), int(parts[2]))
+        except FileNotFoundError:
+            ...
 
 @dataclass
 class GameState:
@@ -47,15 +65,15 @@ class GameState:
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
 
-    def init(self, diameter, number_of_players, initial_speed):
-        radius = diameter / 2
+    def init(self, number_of_players):
+        radius = Game.diameter / 2
         color = Color.players_colors()
         for _ in range(number_of_players):
             player = Snake.at_random_position(radius)
             player.color = next(color)
             self.players.append(player)
         self.fruits=[Fruit.at_random_position(radius) for _ in range(6)]
-        self.current_speed= initial_speed
+        self.current_speed= Game.speed
         self.scores=[0] * number_of_players
 
     def alive_players(self):

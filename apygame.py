@@ -3,6 +3,7 @@ from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
+import constants
 
 class AsyncClock:
     def __init__(self, time_func=pygame.time.get_ticks):
@@ -83,38 +84,42 @@ class CurrentPyGameView:
         return result
 
 # just to make sure that only one view is running at the same time
-mutex = False
-def grab_mutex():
-    global mutex
-    if mutex:
-        raise Exception("Cannot run multiple PyGame views at the same time")
-    mutex = True
-def release_mutex():
-    global mutex
-    mutex = False
+_mutex = False
+def _grab_mutex():
+    global _mutex
+    if _mutex:
+        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + CurrentPyGameView().view.__class__.__name__)
+    _mutex = True
+def _release_mutex():
+    global _mutex
+    _mutex = False
 ############################
 
-async def run_async(view: PyGameView, fps=60):
-    grab_mutex()
-    setView(view)
-    clock = AsyncClock()
-    while CurrentPyGameView().view:
-        delta = await clock.tick(fps)
-        await CurrentPyGameView().update_async(delta)
-    result = CurrentPyGameView().popResult()
-    release_mutex()
-    return result
+async def run_async(view: PyGameView, fps=constants.Game.fps):
+    try:
+        _grab_mutex()
+        setView(view)
+        clock = AsyncClock()
+        while CurrentPyGameView().view:
+            delta = await clock.tick(fps)
+            await CurrentPyGameView().update_async(delta)
+        result = CurrentPyGameView().popResult()
+        return result
+    finally:
+        _release_mutex()
 
-def run(view: PyGameView, fps=60):
-    grab_mutex()
-    setView(view)
-    clock = pygame.time.Clock()
-    while CurrentPyGameView().view:
-        delta = clock.tick(fps) / 1000.0
-        CurrentPyGameView().update(delta)
-    result = CurrentPyGameView().popResult()
-    release_mutex()
-    return result
+def run(view: PyGameView, fps=constants.Game.fps):
+    try:
+        _grab_mutex()
+        setView(view)
+        clock = pygame.time.Clock()
+        while CurrentPyGameView().view:
+            delta = clock.tick(fps) / 1000.0
+            CurrentPyGameView().update(delta)
+        result = CurrentPyGameView().popResult()
+        return result
+    finally:
+        _release_mutex()
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
@@ -126,3 +131,8 @@ def closeView():
 def closeViewWithResult(result):
     CurrentPyGameView().result = result
     closeView()
+
+async def wait_closed():
+    while _mutex:
+        await asyncio.sleep(0)
+

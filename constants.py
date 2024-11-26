@@ -19,3 +19,15 @@ class Color:
     @staticmethod
     def players_colors():
         return (c for c in Color.values() if not c in (Color.black, Color.green, Color.cyan, Color.gold, Color.magenta))
+    
+class Game:
+    """
+    :param diameter: size of things in pixels
+    :param speed: diameters per second
+    :param time_limit: seconds
+    """
+    fps = 60
+    diameter  = 30
+    speed  = 4
+    time_limit = 60
+    rotation_power = 4
