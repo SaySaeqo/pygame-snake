@@ -38,6 +38,9 @@ class PyGameView:
     async def do_async(self):
         pass
 
+    def __await__(self):
+        return run_async(self).__await__()
+
 @singleton
 class CurrentPyGameView:
 
@@ -74,6 +77,11 @@ class CurrentPyGameView:
             self.view = view
             self.closing = False
 
+    def popResult(self):
+        result = self.result
+        self.result = None
+        return result
+
 # just to make sure that only one view is running at the same time
 mutex = False
 def grab_mutex():
@@ -93,7 +101,9 @@ async def run_async(view: PyGameView, fps=60):
     while CurrentPyGameView().view:
         delta = await clock.tick(fps)
         await CurrentPyGameView().update_async(delta)
+    result = CurrentPyGameView().popResult()
     release_mutex()
+    return result
 
 def run(view: PyGameView, fps=60):
     grab_mutex()
@@ -102,8 +112,17 @@ def run(view: PyGameView, fps=60):
     while CurrentPyGameView().view:
         delta = clock.tick(fps) / 1000.0
         CurrentPyGameView().update(delta)
+    result = CurrentPyGameView().popResult()
     release_mutex()
+    return result
 
 def setView(view: PyGameView):
     CurrentPyGameView().set(view)
     logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__}")
+
+def closeView():
+    setView(None)
+
+def closeViewWithResult(result):
+    CurrentPyGameView().result = result
+    closeView()

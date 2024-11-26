@@ -135,111 +135,6 @@ def get_with_outline(surface, width=2):
     
     return outline
 
-def menu(title, options, choice=0):
-
-    if not options:
-        raise ValueError("Options list cannot be empty")
-    
-    while True:
-
-        pygame.display.get_surface().fill(Color.black)
-
-        TITLE_OFFSET = 30
-        offset = TITLE_OFFSET
-        title_sur = text2surface(title, 72)
-        merge_into_board(title_sur, Align.TOP, offset)
-
-        offset += title_sur.get_height() + TITLE_OFFSET
-
-        OPTION_OFFSET = 10
-        for idx, option in enumerate(options):
-            option_sur = text2surface(option)
-            if idx == choice:
-                OUTLINE_WIDTH = 2
-                option_sur = get_with_outline(option_sur, OUTLINE_WIDTH)
-                offset -= OUTLINE_WIDTH
-            merge_into_board(option_sur, Align.TOP, offset)
-            offset += option_sur.get_height() + OPTION_OFFSET
-            if idx == choice:
-                offset -= OUTLINE_WIDTH
-
-        enter = False
-        def operate(key):
-            nonlocal choice
-            nonlocal enter
-            if key == pygame.K_UP:
-                choice = (choice - 1) % len(options)
-            elif key == pygame.K_DOWN:
-                choice = (choice + 1) % len(options)
-            elif key in (pygame.K_RETURN, pygame.K_SPACE):
-                enter = True
-            else:
-                return False
-            return True
-            
-        await_keypress(operate)
-
-        if (enter):
-            return choice, options[choice]
-        
-
-def inputbox(title, default="", character_filter=lambda ch: True):
-    TITLE_OFFSET = 30
-    pygame.display.get_surface().fill(Color.black)
-    title_sur = text2surface(title, 72)
-    merge_into_board(title_sur, Align.TOP, TITLE_OFFSET)
-
-    offset = TITLE_OFFSET + title_sur.get_height() + TITLE_OFFSET
-
-    input_text = default
-    while True:
-        input_sur = text2surface(input_text)
-        background = pygame.Surface((pygame.display.get_surface().get_rect().width, input_sur.get_height()))
-        merge_into_board(background, Align.TOP, offset)
-        merge_into_board(input_sur, Align.TOP, offset)
-
-        enter = False
-        def operate(key):
-            nonlocal input_text
-            nonlocal enter
-            if key == pygame.K_BACKSPACE and input_text:
-                input_text = input_text[:-1]
-            elif key == pygame.K_RETURN:
-                enter = True
-            elif key == pygame.K_DELETE:
-                input_text = ""
-            else:
-                try:
-                    key = chr(key)
-                    if not key.isprintable(): return False
-                    if not character_filter(key): return False
-                    input_text += key
-                except ValueError as e:
-                    return False
-            return True
-
-        await_keypress(operate)
-
-        if enter:
-            return input_text
-
-def keyinputbox(title):
-    TITLE_OFFSET = 30
-    pygame.display.get_surface().fill(Color.black)
-    title_sur = text2surface(title, 72)
-    merge_into_board(title_sur, Align.TOP, TITLE_OFFSET)
-
-    chosen_key = None
-
-    def operate(key):
-        nonlocal chosen_key
-        if key != pygame.K_RETURN:
-            chosen_key = key
-        return True
-
-    await_keypress(operate)
-    return chosen_key
-
 def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
     try:
         lines = []
@@ -258,7 +153,6 @@ def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1
 
     except FileNotFoundError as e:
         return "Empty"
-
 
 async def network_room(players, host):
     clock = apygame.AsyncClock()

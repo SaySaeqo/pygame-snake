@@ -99,7 +99,7 @@ class GameView(apygame.PyGameView):
                     log().info(f"Player {idx+1} clashed with sb's tail")
             # endregion
         if st.all_players_dead():
-            apygame.setView(None)
+            apygame.closeView()
 
         # update time counter
         st.time_passed += delta
@@ -153,26 +153,28 @@ class ReadyGoView(apygame.PyGameView):
         net.send("game", self.state.to_json())
 
 
+MENU_OFFSET = 30
+def titleMenuDrawer(title: str):
+    return MenuDrawer(MENU_OFFSET)\
+        .draw(title, 72)\
+        .add_space(MENU_OFFSET)
+
 class ScrollableView(apygame.PyGameView):
         
-        SOME_OFFSET = 30
         SCROLL_SPEED = 10
     
-        def __init__(self, title: str, scrollable: str, next_view: apygame.PyGameView):
-            self.title = text2surface(title, 72)
+        def __init__(self, title: str, scrollable: str):
+            self.title = title
             self.scrollable = text2surface(scrollable)
-            self.next_view = next_view
             self.scroll = 0
-
-        @property
-        def visible_height(self):
-            return pygame.display.get_surface().get_height() - 3 * self.SOME_OFFSET - self.title.get_height()
+            self.visible_height = pygame.display.get_surface().get_height() - 3*MENU_OFFSET - text2surface(title, 72).get_height()
     
         def update(self, delta):
-            MenuDrawer(self.SOME_OFFSET)\
-                .draw_surface(self.title)\
-                .add_space(self.SOME_OFFSET)\
-                .draw_surface(self.scrollable.subsurface(pygame.Rect(0, self.scroll*self.SCROLL_SPEED, self.scrollable.get_width(), self.visible_height)))
+            titleMenuDrawer(self.title)\
+                .draw_surface(self.scrollable.subsurface(pygame.Rect(
+                        0, self.scroll*self.SCROLL_SPEED,
+                        self.scrollable.get_width(), self.visible_height
+                    )))
             
             keys = pygame.key.get_pressed()
             if keys[pygame.K_DOWN]:
@@ -184,4 +186,80 @@ class ScrollableView(apygame.PyGameView):
             super().handle_event(event)
             if event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_ESCAPE):
-                    apygame.setView(self.next_view)
+                    apygame.closeView()
+
+class InputView(apygame.PyGameView):
+
+    MAX_INPUT_LENGTH = 24
+    
+    def __init__(self, title: str, value: str, character_filter=lambda c: True):
+        self.title = title
+        self.value = value
+        self.character_filter = character_filter
+
+    def update(self, delta):
+        titleMenuDrawer(self.title)\
+            .draw(self.value)
+
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                apygame.closeViewWithResult(self.value)
+            elif event.key == pygame.K_ESCAPE:
+                apygame.closeView()
+            elif event.key == pygame.K_BACKSPACE:
+                self.value = self.value[:-1]
+            elif event.key == pygame.K_DELETE:
+                self.value = ""
+            elif len(self.value) < self.MAX_INPUT_LENGTH \
+                    and event.unicode.isprintable()\
+                    and self.character_filter(event.unicode):
+                self.value += event.unicode
+
+class KeyInputView(apygame.PyGameView):
+    
+    def __init__(self, title: str):
+        self.title = title
+
+    def update(self, delta):
+        titleMenuDrawer(self.title)
+
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
+                apygame.closeView()
+            else:
+                apygame.closeViewWithResult(event.key)
+
+class MenuView(apygame.PyGameView):
+        
+        OPTION_OFFSET = 10
+        OUTLINE_WIDTH = 2
+    
+        def __init__(self, title: str, options: list, choice=0):
+            self.title = title
+            self.options = options
+            self.choice = choice
+    
+        def update(self, delta):
+            drawer = titleMenuDrawer(self.title)
+            for idx, option in enumerate(self.options):
+                if idx == self.choice:
+                    selected = get_with_outline(text2surface(option), self.OUTLINE_WIDTH)
+                    drawer.add_space(-self.OUTLINE_WIDTH).draw_surface(selected).add_space(self.OPTION_OFFSET-self.OUTLINE_WIDTH)
+                else:
+                    drawer.draw(option).add_space(self.OPTION_OFFSET)
+            
+        def handle_event(self, event):
+            super().handle_event(event)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    self.choice = (self.choice - 1) % len(self.options)
+                elif event.key == pygame.K_DOWN:
+                    self.choice = (self.choice + 1) % len(self.options)
+                elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    apygame.closeViewWithResult(self.choice)
+                elif event.key == pygame.K_ESCAPE:
+                    apygame.closeView()

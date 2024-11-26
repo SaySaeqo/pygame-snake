@@ -27,12 +27,10 @@ def unique(values: Sequence[_T],
     [-1, 0]
     """
     return sorted(
-        list(
-            _OrderedDict.fromkeys(values)
-            if key is None
-            else _OrderedDict((key(value), value)
-                              for value in reversed(values)).values()
-    ), key=values.index)
+        _OrderedDict.fromkeys(values) if key is None
+        else _OrderedDict((key(value), value) for value in reversed(values)).values(), 
+        key=values.index
+        )
 
 
 async def first_completed(*coroutines):

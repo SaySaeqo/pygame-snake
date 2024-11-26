@@ -36,35 +36,33 @@ async def run_host(local_players_names: list, options: Options, control_function
     players = [[name, server_address] for name in local_players_names]
     game_state = GameState()
 
-    try:
-        await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
-        
-        while True:
-            should_start = await windowfunctions.network_room(players, host)
-            log().debug("Should start: %s", should_start)
+    await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+    
+    while True:
+        should_start = await windowfunctions.network_room(players, host)
+        log().debug("Should start: %s", should_start)
 
-            if not should_start:
-                break
+        if not should_start:
+            break
 
-            game_state.init(options.diameter, len(players), options.speed)
-            options.resolution = pygame.display.get_window_size()
-            net.send("start", options.to_json())
-            await asyncio.sleep(0.2)
+        game_state.init(options.diameter, len(players), options.speed)
+        options.resolution = pygame.display.get_window_size()
+        net.send("start", options.to_json())
+        await asyncio.sleep(0.2)
 
-            for snake, func in zip(game_state.players[:local_players_num], control_functions):
-                asyncio.create_task(control_snake(func, snake, options.fps))
+        for snake, func in zip(game_state.players[:local_players_num], control_functions):
+            asyncio.create_task(control_snake(func, snake, options.fps))
 
-            await apygame.run_async(ReadyGoView(game_state,GameView(game_state, options)), fps=options.fps)
+        await apygame.run_async(ReadyGoView(game_state,GameView(game_state, options)), fps=options.fps)
 
-            net.send("score", game_state.to_json())
-            await asyncio.sleep(0.2)
-            show_scores(game_state.scores, players)
-            game_state.reset()
-            players.clear()
-            players.extend([name, server_address] for name in local_players_names)
+        net.send("score", game_state.to_json())
+        await asyncio.sleep(0.2)
+        show_scores(game_state.scores, players)
+        game_state.reset()
+        players.clear()
+        players.extend([name, server_address] for name in local_players_names)
 
-    finally:
-        net.close()
+    net.close()
 
 
 
