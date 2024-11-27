@@ -5,6 +5,8 @@ import logging
 import asyncio
 import constants
 
+DEFAULT_FPS = 60
+
 class AsyncClock:
     def __init__(self, time_func=pygame.time.get_ticks):
         self.time_func = time_func
@@ -95,7 +97,7 @@ def _release_mutex():
     _mutex = False
 ############################
 
-async def run_async(view: PyGameView, fps=constants.Game.fps):
+async def run_async(view: PyGameView, fps=DEFAULT_FPS):
     try:
         _grab_mutex()
         set_view(view)
@@ -108,7 +110,7 @@ async def run_async(view: PyGameView, fps=constants.Game.fps):
     finally:
         _release_mutex()
 
-def run(view: PyGameView, fps=constants.Game.fps):
+def run(view: PyGameView, fps=DEFAULT_FPS):
     try:
         _grab_mutex()
         set_view(view)

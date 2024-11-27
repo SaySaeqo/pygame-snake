@@ -28,7 +28,6 @@ class Game:
     :param speed: diameters per second
     :param time_limit: seconds
     """
-    fps = 60
     diameter  = 30
     speed  = 4
     time_limit = 60
