@@ -37,7 +37,7 @@ async def run_host():
     await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
     
     while True:
-        should_start = await windowfunctions.network_room(players, host)
+        should_start = await LobbyView(host, players)
         if not should_start:
             break
 

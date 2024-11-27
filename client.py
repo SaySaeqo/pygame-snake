@@ -14,7 +14,7 @@ class ClientNetworkData:
     game_state: GameState = None
 
 
-class LobbyView(apygame.PyGameView):
+class ClientLobbyView(apygame.PyGameView):
 
     def __init__(self, host_address):
         self.host_address = host_address
@@ -78,7 +78,7 @@ class ClientNetworkListener(net.NetworkListener):
         log().info("Game over")
         show_scores(game_state.scores, ClientNetworkData().players)
         net.send("join", Config().active_players_names)
-        apygame.setView(LobbyView(self.address))
+        apygame.setView(ClientLobbyView(self.address))
 
     def disconnected(self):
         log().info("Disconnected from the server")
@@ -102,7 +102,7 @@ async def run_client(host_address: tuple[str, int]):
         return
         
     net.send("join", Config().active_players_names)
-    await LobbyView(host_address)
+    await ClientLobbyView(host_address)
     net.close()
     
 

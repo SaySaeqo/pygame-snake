@@ -279,3 +279,33 @@ class WaitingView(apygame.PyGameView):
         super().handle_event(event)
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
             apygame.closeView()
+
+class LobbyView(apygame.PyGameView):
+
+    def __init__(self, host, players):
+        self.host = host
+        self.players = players
+
+    @property
+    def players_phrase(self):
+        return "\n".join(map(lambda x: str(x),self.players))
+
+    def update(self, delta):
+        windowfunctions.MenuDrawer(MENU_OFFSET)\
+            .draw("Network Room", 72)\
+            .draw("(Press enter to start)", 18)\
+            .add_space(MENU_OFFSET)\
+            .draw(f"Host: {self.host}", 24)\
+            .add_space(MENU_OFFSET*2)\
+            .draw(self.players_phrase)
+        
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                apygame.closeViewWithResult(True)
+            if event.key == pygame.K_ESCAPE:
+                apygame.closeView()
+
+    async def do_async(self):
+        net.send("lobby", self.players)

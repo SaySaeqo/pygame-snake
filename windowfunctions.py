@@ -153,32 +153,3 @@ def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1
 
     except FileNotFoundError as e:
         return "Empty"
-
-async def network_room(players, host):
-    clock = apygame.AsyncClock()
-    while True:
-
-        players_phrase = ""
-        for player in players:
-            players_phrase += f"{player})\n"
-        
-        SOME_OFFSET = 30
-        MenuDrawer(SOME_OFFSET)\
-            .draw("Network Room", 72)\
-            .draw("(Press enter to start)", 18)\
-            .add_space(SOME_OFFSET)\
-            .draw(f"Host: {host}", 24)\
-            .add_space(SOME_OFFSET*2)\
-            .draw(players_phrase)
-
-        pygame.display.update()
-        net.send("lobby", players)
-
-        await clock.tick(WINDOWS_FUNCTIONS_FPS)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                return True
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                return False
