@@ -1,23 +1,9 @@
 import client
 from dto import *
 import host
-from snake_utils import *
-from windowfunctions import *
+from views import *
 import functools as ft
-
-
-async def show_menu(title, menu):
-    """
-    menu should be function returning tuple of 2 lists:
-    - list of options names
-    - list of options' couritines to be awaited when chosen
-    """
-    choice = 0
-    while True:
-        options, methods = menu()
-        choice = await MenuView(title, options, choice)
-        if choice == None: break
-        await methods[choice]()
+import pygameview
 
 
 def main_menu():
@@ -48,21 +34,23 @@ def main_menu():
 
 
     async def change_name(which_player):
-        result = await InputView("Write your name:", Config().names[which_player], lambda ch: not ch in " +:")
+        result = await pygameview.common.InputView("Write your name:", Config().names[which_player], lambda ch: not ch in " +:")
         if result: Config().names[which_player] = result
     for i in range(Config().number_of_players):
         menu_options += [f"PLAYER {i+1}: {Config().names[i]}"]
         menu_methods += [ft.partial(change_name, i)]
         
     resolution_phrase = "RESOLUTION: "
-    if pygame.display.get_window_size() == get_screen_size():
+    if pygame.display.get_window_size() == pygameview.utils.get_screen_size():
         resolution_phrase += "FULLSCREEN"
     else:
         resolution_phrase += "x".join(str(i) for i in pygame.display.get_window_size())
-    async def leaderboard(): await ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"))
-    async def resolution(): next_screen_resolution()
+    async def leaderboard(): await pygameview.common.ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"))
+    async def resolution(): pygameview.utils.next_screen_resolution()
+    controls = ft.partial(pygameview.common.show_menu, "CONTROLS", controls_menu)
+    network = ft.partial(pygameview.common.show_menu, "NETWORK", network_menu)
     menu_options += ["LEADERBOARD", "CONTROLS", resolution_phrase, "NETWORK"]
-    menu_methods += [leaderboard, ft.partial(show_menu, "CONTROLS", controls_menu), resolution, ft.partial(show_menu, "NETWORK", network_menu)]
+    menu_methods += [leaderboard, controls, resolution, network]
 
     return menu_options, menu_methods
 
@@ -71,10 +59,10 @@ def controls_menu():
     menu_methods = []
 
     async def left(which_player):
-        key = await KeyInputView("Press a key...")
+        key = await pygameview.common.KeyInputView("Press a key...")
         if key: Config().controls[which_player].left = key
     async def right(which_player):
-        key = await KeyInputView("Press a key...")
+        key = await pygameview.common.KeyInputView("Press a key...")
         if key: Config().controls[which_player].right = key
 
     for idx, control in enumerate(Config().controls):
@@ -85,7 +73,7 @@ def controls_menu():
 
 def network_menu():
     async def join():
-        host_address_phrase = await InputView("Enter host address:", "localhost")
+        host_address_phrase = await pygameview.common.InputView("Enter host address:", "localhost")
         if not host_address_phrase: return
         parts = host_address_phrase.split(":")
         ip = parts[0]

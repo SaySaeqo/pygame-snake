@@ -1,12 +1,14 @@
 import asyncio
 import gamenetwork as net
-from snake_utils import *
+from views import *
 import utils
+import dto
+import constants
 
 
 class HostNetworkListener(net.NetworkListener):
 
-    def __init__(self, address, local_players: list, game_state: GameState):
+    def __init__(self, address, local_players: list, game_state: dto.GameState):
         super().__init__(address)
         self.players = local_players
         self.game_state = game_state
@@ -21,7 +23,7 @@ class HostNetworkListener(net.NetworkListener):
         player.decision = data["direction"]
 
     def disconnected(self):
-        log().info("Player disconnected")
+        constants.LOG.info("Player disconnected")
         for i in range(len(self.players)):
             if self.players[i][1] == self.address:
                 del self.players[i]
@@ -29,8 +31,8 @@ class HostNetworkListener(net.NetworkListener):
 async def run_host():
     server_address = (None, 31426)
     host = f"{utils.get_my_ip()}:{server_address[1]}"
-    players = [[name, server_address] for name in Config().active_players_names]
-    game_state = GameState()
+    players = [[name, server_address] for name in dto.Config().active_players_names]
+    game_state = dto.GameState()
 
     await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
     
@@ -50,7 +52,7 @@ async def run_host():
         show_scores(game_state.scores, players)
         game_state.reset()
         players.clear()
-        players.extend([name, server_address] for name in Config().active_players_names)
+        players.extend([name, server_address] for name in dto.Config().active_players_names)
 
     net.close()
 

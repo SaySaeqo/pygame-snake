@@ -1,5 +1,4 @@
 import pygame
-import gamenetwork as net
 
 class Direction:
     FORWARD = 0

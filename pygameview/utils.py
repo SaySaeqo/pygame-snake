@@ -1,10 +1,10 @@
-import pygame
 import sys
-from constants import Color
-from utils import unique
+import pygame
 from screeninfo import get_monitors
 
-WINDOWS_FUNCTIONS_FPS = 10
+class Color:
+    white = (255, 255, 255)
+    black = (0, 0, 0)
 
 class Align:
     CENTER = 0
@@ -75,8 +75,9 @@ class MenuDrawer:
         
 def await_keypress(check_key, check_keys=lambda keys: False, clock=pygame.time.Clock()):
     pygame.display.update()
+    FPS = 10
     while True:
-        clock.tick(WINDOWS_FUNCTIONS_FPS)
+        clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN and check_key(event.key): 
                 return
@@ -131,22 +132,3 @@ def get_with_outline(surface, width=2):
     outline.blit(surface, (width, width))
     
     return outline
-
-def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
-    try:
-        lines = []
-        with open(filepath, "r+") as file:
-            lines = file.readlines()
-
-            lines = sorted(lines, key=sort_key, reverse=True)
-            lines = unique(lines, key=name_key)
-            lines = lines[:max_results]
-
-            file.seek(0)
-            file.writelines(lines)
-            file.truncate()
-
-            return "".join(lines) or "Empty"
-
-    except FileNotFoundError as e:
-        return "Empty"

@@ -1,11 +1,13 @@
-from snake_menu import *
+import menus
 import logging
-from snake_utils import log
 import asyncio
+import pygameview
+import dto
+import constants
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    log().info("Starting the game")
-    Config().load_from_file()
-    create_window("Snake")
-    asyncio.run(show_menu("SNAKE", main_menu))
+    constants.LOG.info("Starting the game")
+    dto.Config().load_from_file()
+    pygameview.utils.create_window("Snake")
+    asyncio.run(pygameview.common.show_menu("SNAKE", menus.main_menu))

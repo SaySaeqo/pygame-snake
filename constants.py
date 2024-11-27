@@ -1,3 +1,5 @@
+import logging
+
 class Color:
     black = (0, 0, 0)
     white = (255, 255, 255)
@@ -31,3 +33,5 @@ class Game:
     speed  = 4
     time_limit = 60
     rotation_power = 4
+
+LOG = logging.getLogger("snake")

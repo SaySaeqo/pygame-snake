@@ -3,7 +3,8 @@ from constants import *
 from decisionfunctions import based_on_keys
 from gameobjects import *
 from singleton_decorator import singleton
-import windowfunctions
+import pygameview
+from utils import unique
 
 @dataclass
 class Control:
@@ -47,9 +48,28 @@ class Config:
                             self.controls[player].right = pygame.key.key_code(parts[4])
                     if line.startswith("resolution"):
                         parts = line.split()
-                        windowfunctions.create_window("Snake", int(parts[1]), int(parts[2]))
+                        pygameview.common.create_window("Snake", int(parts[1]), int(parts[2]))
         except FileNotFoundError:
             ...
+
+def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
+    try:
+        lines = []
+        with open(filepath, "r+") as file:
+            lines = file.readlines()
+
+            lines = sorted(lines, key=sort_key, reverse=True)
+            lines = unique(lines, key=name_key)
+            lines = lines[:max_results]
+
+            file.seek(0)
+            file.writelines(lines)
+            file.truncate()
+
+            return "".join(lines) or "Empty"
+
+    except FileNotFoundError as e:
+        return "Empty"
 
 @dataclass
 class GameState:

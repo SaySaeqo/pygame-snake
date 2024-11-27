@@ -98,7 +98,7 @@ def _release_mutex():
 async def run_async(view: PyGameView, fps=constants.Game.fps):
     try:
         _grab_mutex()
-        setView(view)
+        set_view(view)
         clock = AsyncClock()
         while CurrentPyGameView().view:
             delta = await clock.tick(fps)
@@ -111,7 +111,7 @@ async def run_async(view: PyGameView, fps=constants.Game.fps):
 def run(view: PyGameView, fps=constants.Game.fps):
     try:
         _grab_mutex()
-        setView(view)
+        set_view(view)
         clock = pygame.time.Clock()
         while CurrentPyGameView().view:
             delta = clock.tick(fps) / 1000.0
@@ -121,16 +121,16 @@ def run(view: PyGameView, fps=constants.Game.fps):
     finally:
         _release_mutex()
 
-def setView(view: PyGameView):
+def set_view(view: PyGameView):
     CurrentPyGameView().set(view)
     logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__}")
 
-def closeView():
-    setView(None)
+def close_view():
+    set_view(None)
 
-def closeViewWithResult(result):
+def close_view_with_result(result):
     CurrentPyGameView().result = result
-    closeView()
+    close_view()
 
 async def wait_closed():
     while _mutex:
