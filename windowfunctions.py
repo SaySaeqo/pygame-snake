@@ -3,9 +3,6 @@ import sys
 from constants import Color
 from utils import unique
 from screeninfo import get_monitors
-import apygame
-from math import floor
-import gamenetwork as net
 
 WINDOWS_FUNCTIONS_FPS = 10
 

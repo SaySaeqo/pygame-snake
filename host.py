@@ -2,8 +2,6 @@ import asyncio
 import gamenetwork as net
 from snake_utils import *
 import utils
-import windowfunctions
-import apygame
 
 
 class HostNetworkListener(net.NetworkListener):
