@@ -4,7 +4,7 @@ from decisionfunctions import based_on_keys
 from gameobjects import *
 from singleton_decorator import singleton
 import pygameview
-from utils import unique
+import toolz
 
 @dataclass
 class Control:
@@ -59,8 +59,8 @@ def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1
             lines = file.readlines()
 
             lines = sorted(lines, key=sort_key, reverse=True)
-            lines = unique(lines, key=name_key)
-            lines = lines[:max_results]
+            lines = toolz.unique(lines, key=name_key)
+            lines = list(toolz.take(max_results, lines))
 
             file.seek(0)
             file.writelines(lines)

@@ -23,7 +23,7 @@ class ScrollableView(core.PyGameView):
             titleMenuDrawer(self.title)\
                 .draw_surface(self.scrollable.subsurface(pygame.Rect(
                         0, self.scroll*self.SCROLL_SPEED,
-                        self.scrollable.get_width(), self.visible_height
+                        self.scrollable.get_width(), min(self.visible_height, self.scrollable.get_height())
                     )))
             
             keys = pygame.key.get_pressed()
