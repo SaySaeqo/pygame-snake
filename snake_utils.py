@@ -7,6 +7,7 @@ from windowfunctions import *
 import apygame
 import gamenetwork as net
 import logging
+import math
 
 def log():
     return logging.getLogger("snake")
@@ -188,6 +189,14 @@ class ScrollableView(apygame.PyGameView):
                     apygame.closeView()
 
 class InputView(apygame.PyGameView):
+    """
+    View with text input. There are no side effects. Max length of input is 24 chars.
+    Controls:
+    - Esc -> return None
+    - Enter -> return string
+    - Del -> clear a string
+    - Backspace -> deletes last char
+    """
 
     MAX_INPUT_LENGTH = 24
     
@@ -270,7 +279,7 @@ class WaitingView(apygame.PyGameView):
         self.count = 0.0
 
     def update(self, delta):
-        title(self.msg + "."*floor(self.count), Align.CENTER)
+        title(self.msg + "."*math.floor(self.count), Align.CENTER)
         self.count = (self.count + delta) % 4
 
     def handle_event(self, event):
