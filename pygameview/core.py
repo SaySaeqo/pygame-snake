@@ -3,7 +3,6 @@ from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
-import constants
 
 DEFAULT_FPS = 60
 
