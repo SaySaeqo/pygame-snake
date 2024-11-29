@@ -7,6 +7,7 @@ from singleton_decorator import singleton
 from dataclasses import dataclass
 from dto import Config, GameState
 import constants
+import pygameutils
 
 @singleton
 @dataclass
@@ -72,7 +73,7 @@ class ClientNetworkListener(net.NetworkListener):
 
     def action_start(self, resolution):
         constants.LOG.info("Game is starting")
-        pygame.display.set_mode(resolution, pygame.FULLSCREEN if resolution == pygameview.utils.get_screen_size() else 0)
+        pygame.display.set_mode(resolution, pygame.FULLSCREEN if resolution == pygameutils.get_screen_size() else 0)
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):

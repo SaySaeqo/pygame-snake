@@ -3,7 +3,7 @@ from constants import *
 from decisionfunctions import based_on_keys
 from gameobjects import *
 from singleton_decorator import singleton
-import pygameview
+import pygameutils
 import toolz
 
 @dataclass
@@ -48,7 +48,7 @@ class Config:
                             self.controls[player].right = pygame.key.key_code(parts[4])
                     if line.startswith("resolution"):
                         parts = line.split()
-                        pygameview.common.create_window("Snake", int(parts[1]), int(parts[2]))
+                        pygameutils.create_window("Snake", int(parts[1]), int(parts[2]))
         except FileNotFoundError:
             ...
 

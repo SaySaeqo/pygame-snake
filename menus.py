@@ -41,12 +41,12 @@ def main_menu():
         menu_methods += [ft.partial(change_name, i)]
         
     resolution_phrase = "RESOLUTION: "
-    if pygame.display.get_window_size() == pygameview.utils.get_screen_size():
+    if pygame.display.get_window_size() == pygameutils.get_screen_size():
         resolution_phrase += "FULLSCREEN"
     else:
         resolution_phrase += "x".join(str(i) for i in pygame.display.get_window_size())
     async def leaderboard(): await pygameview.common.ScrollableView("LEADERBOARD", read_leaderboard_file("leaderboard.data"))
-    async def resolution(): pygameview.utils.next_screen_resolution()
+    async def resolution(): pygameutils.next_screen_resolution()
     controls = ft.partial(pygameview.common.show_menu, "CONTROLS", controls_menu)
     network = ft.partial(pygameview.common.show_menu, "NETWORK", network_menu)
     menu_options += ["LEADERBOARD", "CONTROLS", resolution_phrase, "NETWORK"]
