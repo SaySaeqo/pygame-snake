@@ -20,7 +20,7 @@ def main_menu():
                 file.write(f"{Config().names[idx]}: {score}\n")
             names_combined = " + ".join(sorted(Config().active_players_names))
             file.write(f"{names_combined}: {sum(scores)}\n")
-        show_scores(scores, Config().names)
+        await show_scores(scores, Config().names)
 
         Config().save_to_file()
 

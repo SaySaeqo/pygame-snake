@@ -48,6 +48,9 @@ def merge_into_board(surface: pygame.Surface, align=Align.TOP, offset=0):
     pygame.display.get_surface().blit(surface, (x, y))
 
 def title(text: str, align=Align.TOP, font_size=32, offset=0):
+    """
+    Merge of functions: text2surface, merge_into_board
+    """
 
     if not text: return
     surface = text2surface(text, font_size)
@@ -72,24 +75,6 @@ class MenuDrawer:
         self.offset += offset
         return self
 
-        
-def await_keypress(check_key, check_keys=lambda keys: False, clock=pygame.time.Clock()):
-    pygame.display.update()
-    FPS = 10
-    while True:
-        clock.tick(FPS)
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN and check_key(event.key): 
-                return
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                sys.exit()
-        if check_keys(pygame.key.get_pressed()): 
-            return
-
-def pause(message="PAUSED"):
-    title(message, Align.CENTER)
-    await_keypress(lambda key: key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN))
-
 def get_screen_size():
     monitor = get_monitors()[0]
     return monitor.width, monitor.height
@@ -105,10 +90,7 @@ def next_screen_resolution():
     if current_resolution == get_screen_size():
         next_resolution = RESOLUTIONS[0]
     else:
-        try:
-            next_resolution = RESOLUTIONS[RESOLUTIONS.index(current_resolution)+1]
-        except (IndexError, ValueError) as e:
-            next_resolution = RESOLUTIONS[0]
+        next_resolution = RESOLUTIONS[RESOLUTIONS.index(current_resolution)+1]
     pygame.display.set_mode(next_resolution, pygame.FULLSCREEN if next_resolution == get_screen_size() else 0)
 
 def create_window(title, width=None, height=None, icon=None):

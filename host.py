@@ -18,9 +18,12 @@ class HostNetworkListener(net.NetworkListener):
         self.players.extend(new_players)
 
     def action_control(self, data):
-        idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self.address)
-        player = self.game_state.players[idx]
-        player.decision = data["direction"]
+        try:
+            idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self.address)
+            player = self.game_state.players[idx]
+            player.decision = data["direction"]
+        except StopIteration:
+            pass
 
     def disconnected(self):
         constants.LOG.info("Player disconnected")
@@ -28,6 +31,7 @@ class HostNetworkListener(net.NetworkListener):
             if self.players[i][1] == self.address:
                 del self.players[i]
         
+
 async def run_host():
     server_address = (None, 31426)
     host = f"{utils.get_my_ip()}:{server_address[1]}"
@@ -43,16 +47,13 @@ async def run_host():
 
         game_state.init(len(players))
         net.send("start", pygame.display.get_window_size())
-        await asyncio.sleep(0.2)
-
         await ReadyGoView(game_state,GameView(game_state))
-
-        net.send("score", game_state.to_json())
-        await asyncio.sleep(0.2)
-        show_scores(game_state.scores, players)
-        game_state.reset()
+        players_copy = players.copy()
         players.clear()
         players.extend([name, server_address] for name in dto.Config().active_players_names)
+        net.send("score", game_state.to_json())
+        await show_scores(game_state.scores, players_copy)
+        game_state.reset()
 
     net.close()
 

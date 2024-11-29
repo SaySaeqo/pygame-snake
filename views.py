@@ -35,12 +35,12 @@ def draw_board(state: dto.GameState):
             for player in state.alive_players():
                 player.draw_direction()
 
-def show_scores(scores, names):
+def show_scores(scores, names) -> pygameview.common.PauseView:
     end_phrase = "GAME OVER\n"
     end_phrase += f"TOTAL SCORE: {sum(scores)}\n"
     for name, score in zip(names, scores):
         end_phrase += f"{name}: {score}\n"
-    pygameview.utils.pause(end_phrase)
+    return pygameview.common.PauseView(end_phrase)
 
 class GameView(pygameview.PyGameView):
 
@@ -120,8 +120,7 @@ class GameView(pygameview.PyGameView):
         if event.type == pygame.QUIT:
             sys.exit()
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE):
-            pygameview.utils.pause()
-            draw_board(self.state)
+            pygameview.set_view(pygameview.common.PauseView("PAUSED", self))
 
     async def do_async(self):
         net.send("game", self.state.to_json())

@@ -149,3 +149,19 @@ class WaitingView(core.PyGameView):
         super().handle_event(event)
         if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
             core.close_view()
+
+class PauseView(core.PyGameView):
+    
+    def __init__(self, msg: str, paused_view: core.PyGameView = None, key_list=(pygame.K_p, pygame.K_PAUSE, pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN)):
+        self.msg = msg
+        self.paused_view = paused_view
+        self.key_list = key_list
+
+    def update(self, delta):
+        title(self.msg, Align.CENTER)
+
+    def handle_event(self, event):
+        super().handle_event(event)
+        if event.type == pygame.KEYDOWN and event.key in self.key_list:
+            core.set_view(self.paused_view)
+        

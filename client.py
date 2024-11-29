@@ -14,6 +14,8 @@ class ClientNetworkData:
     players = []
     game_state: GameState = None
 
+should_relaunch = True
+
 
 class ClientLobbyView(pygameview.PyGameView):
 
@@ -76,13 +78,14 @@ class ClientNetworkListener(net.NetworkListener):
     def action_score(self, game_state):
         game_state = GameState.from_json(game_state)
         constants.LOG.info("Game over")
-        show_scores(game_state.scores, ClientNetworkData().players)
-        net.send("join", Config().active_players_names)
-        pygameview.set_view(ClientLobbyView(self.address))
-
+        pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
+        global should_relaunch
+        should_relaunch = True
+        
     def disconnected(self):
         constants.LOG.info("Disconnected from the server")
         pygameview.close_view()
+
 
 async def run_client(host_address: tuple[str, int]):
     try:
@@ -101,8 +104,11 @@ async def run_client(host_address: tuple[str, int]):
         constants.LOG.info("Connection aborted")
         return
         
-    net.send("join", Config().active_players_names)
-    await ClientLobbyView(host_address)
+    global should_relaunch
+    while should_relaunch:
+        should_relaunch = False
+        net.send("join", Config().active_players_names)
+        await ClientLobbyView(host_address)
     net.close()
     
 
