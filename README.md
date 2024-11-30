@@ -60,7 +60,7 @@ python snake.py
 If you want to generate an executable for the game, you can use PyInstaller.
 
 ```bash
-pyinstaller --onefile snake.py
+pyinstaller --onefile --clean snake.py
 
 ```
 
