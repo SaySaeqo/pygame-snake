@@ -4,26 +4,29 @@ from constants import Color
 from decisionfunctions import Direction
 
 class Circle(pygame.Vector2):
-    def __init__(self, x, y, radius):
+
+    def __init__(self, x, y, radius, color=Color.default, outline_width=0):
         super().__init__(x, y)
         self.r = radius
-        self.outline_width = 0
-        self.color = Color.default
+        self.outline_width = outline_width
+        self.color = color
+        self.surface = pygame.Surface((radius * 2, radius * 2), flags=pygame.SRCALPHA)
+        pygame.draw.circle(self.surface, color, (radius, radius), radius, outline_width)
 
     def __str__(self) -> str:
         return self.__class__.__name__ + super().__str__()
 
     def draw(self):
-        pygame.draw.circle(pygame.display.get_surface(), self.color, self, self.r, self.outline_width)
+        pygame.display.get_surface().blit(self.surface, (self.x - self.r, self.y - self.r))
 
     def is_colliding_with(self, other):
         return other is not self and isinstance(other, Circle) and self.distance_to(other) < self.r + other.r
 
     @classmethod
-    def at_random_position(cls, radius):
+    def at_random_position(cls, radius, color=None):
         x = random.random() * pygame.display.get_surface().get_rect().width
         y = random.random() * pygame.display.get_surface().get_rect().height
-        return cls(x, y, radius)
+        return cls(x, y, radius) if not color else cls(x, y, radius, color)
 
     def get_rect(self):
         return pygame.Rect(self.x - self.r, self.y - self.r, self.r * 2, self.r * 2)
@@ -41,11 +44,10 @@ class Circle(pygame.Vector2):
 
 
 class Fruit(Circle):
-    def __init__(self, x, y, radius):
-        super().__init__(x, y, radius)
-        self.gives_wall_walking = False
-        self.gives_weird_walking = False
-        self.color = self.calculate_color()
+    def __init__(self, x, y, radius, gives_wall_walking=False, gives_weird_walking=False):
+        self.gives_wall_walking = gives_wall_walking
+        self.gives_weird_walking = gives_weird_walking
+        super().__init__(x, y, radius, self.calculate_color())
 
     def calculate_color(self):
         if self.gives_wall_walking and self.gives_weird_walking:
@@ -72,6 +74,8 @@ class Fruit(Circle):
             self.gives_wall_walking = False
             self.gives_weird_walking = False
         self.color = self.calculate_color()
+        self.surface = pygame.Surface((self.r * 2, self.r * 2), flags=pygame.SRCALPHA)
+        pygame.draw.circle(self.surface, self.color, (self.r, self.r), self.r, self.outline_width)
 
     def to_json(self):
         return super().to_json() | {
@@ -81,23 +85,17 @@ class Fruit(Circle):
     
     @classmethod
     def from_json(cls, json):
-        fruit = cls(json["x"], json["y"], json["r"])
-        fruit.gives_wall_walking = json["gives_wall_walking"]
-        fruit.gives_weird_walking = json["gives_weird_walking"]
-        fruit.color = fruit.calculate_color()
-        return fruit
+        return cls(json["x"], json["y"], json["r"], json["gives_wall_walking"], json["gives_weird_walking"])
                     
 
 class Wall(Circle):
-    def __init__(self, x, y, radius):
-        super().__init__(x, y, radius)
-        self.color = Color.blue
+    def __init__(self, x, y, radius, color=Color.blue, outline_width=0):
+        super().__init__(x, y, radius, color, outline_width)
         
 class Snake(Circle):
-    def __init__(self, x, y, radius):
-        super().__init__(x, y, radius)
+    def __init__(self, x, y, radius, color=Color.white, outline_width=0):
+        super().__init__(x, y, radius, color, outline_width)
         self.decision = Direction.FORWARD
-        self.color = Color.white
         self.tail: list[Circle] = []
         self.direction = pygame.Vector2(random.random(), random.random()).normalize()
         self.rotation_power = 5  # distance sin size of snake width in witch snake successfully turns back
@@ -144,9 +142,7 @@ class Snake(Circle):
     def consume(self, fruit):
         fruit.respawn()
         last = self.tail[-1] if self.tail else self
-        new_tail = Circle(last.x, last.y, self.r)
-        new_tail.color = self.color
-        new_tail.outline_width = int(self.r / 2)
+        new_tail = Circle(last.x, last.y, self.r, self.color, outline_width=int(self.r / 2))
         self.tail.append(new_tail)
         
 
@@ -183,10 +179,10 @@ class Snake(Circle):
         return self
     
     @classmethod
-    def at_random_position(cls, radius):
+    def at_random_position(cls, radius, color=None):
         x = random.random() * pygame.display.get_surface().get_rect().width * 0.6 + pygame.display.get_surface().get_rect().width * 0.2
         y = random.random() * pygame.display.get_surface().get_rect().height * 0.6 + pygame.display.get_surface().get_rect().height * 0.2
-        return cls(x, y, radius)
+        return cls(x, y, radius) if not color else cls(x, y, radius, color)
     
     def to_json(self):
         return super().to_json() | {
@@ -203,15 +199,12 @@ class Snake(Circle):
      
     @classmethod
     def from_json(cls, json):
-        snake = cls(json["x"], json["y"], json["r"])
+        snake = cls(json["x"], json["y"], json["r"], json["color"])
         snake.decision = json["decision"]
         snake.direction = pygame.Vector2(json["direction"]["x"], json["direction"]["y"])
         snake.rotation_power = json["rotation_power"]
         snake.alive = json["alive"]
-        snake.color = json["color"]
         for t in json["tail"]:
-            tail = Circle.from_json(t)
-            tail.color = snake.color
-            tail.outline_width = int(snake.r / 2)
+            tail = Circle(t["x"], t["y"], t["r"], snake.color, outline_width=int(snake.r / 2))
             snake.tail.append(tail)
         return snake

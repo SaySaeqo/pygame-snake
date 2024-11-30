@@ -89,8 +89,7 @@ class GameState:
         radius = Game.diameter / 2
         color = Color.players_colors()
         for _ in range(number_of_players):
-            player = Snake.at_random_position(radius)
-            player.color = next(color)
+            player = Snake.at_random_position(radius, next(color))
             self.players.append(player)
         self.fruits=[Fruit.at_random_position(radius) for _ in range(6)]
         self.current_speed= Game.speed
