@@ -1,5 +1,6 @@
 import pygame
 import screeninfo
+import math
 
 
 def get_screen_size():
@@ -31,3 +32,33 @@ def create_window(title, width=None, height=None, icon=None):
         pygame.display.set_mode((width, height), pygame.FULLSCREEN if full_screen else 0)
     else:
         next_screen_resolution()
+
+def paint_surface(square_surface: pygame.Surface, color, percentage: int, direction: pygame.Vector2) -> pygame.Surface:
+
+    alfa = pygame.Vector2(1, 1).angle_to(direction)
+    quarter = 1
+    while alfa > 45:
+        quarter += 1
+        alfa -= 90
+
+    full_len = math.cos(math.radians(alfa)) * square_surface.get_width() * math.sqrt(2)
+    len = full_len * percentage / 100
+
+    divider = direction.rotate(90)
+    point_on_divider = direction * len
+    starting_point = pygame.Vector2(0 if quarter in (1,4) else 1, 0 if quarter in (1,2) else 1) * square_surface.get_width()
+    
+    painting_surface = square_surface.copy()
+    pygame.draw.polygon(painting_surface, color, [
+        point_on_divider + divider * square_surface.get_width(),
+        point_on_divider - divider * square_surface.get_width(),
+        starting_point - divider * square_surface.get_width(),
+        starting_point + divider * square_surface.get_width()
+    ])
+
+    mask = pygame.mask.from_surface(square_surface)
+
+    return mask.to_surface(square_surface.copy(), painting_surface, unsetcolor=None)
+
+
+    

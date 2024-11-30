@@ -2,6 +2,7 @@ import random
 import pygame
 from constants import Color
 from decisionfunctions import Direction
+import pygameutils
 
 class Circle(pygame.Vector2):
 
