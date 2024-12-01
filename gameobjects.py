@@ -3,6 +3,7 @@ import pygame
 from constants import Color
 from decisionfunctions import Direction
 import pygameutils
+import math
 
 class Circle(pygame.Vector2):
 
@@ -101,6 +102,9 @@ class Snake(Circle):
         self.direction = pygame.Vector2(random.random(), random.random()).normalize()
         self.rotation_power = 5  # distance sin size of snake width in witch snake successfully turns back
         self.alive = True
+        self.timer = 0.0
+        self.timer_max = 5.0
+        self.timer_color = Color.default
 
     def move(self, distance, should_walk_weird=False):
         # change direction if key was pressed
@@ -117,40 +121,79 @@ class Snake(Circle):
 
         for prev, t in zip([self] + self.tail, self.tail):
             if not t.is_colliding_with(prev):
-                if should_walk_weird: 
+
+                x, y = prev
+                width, height = pygame.display.get_surface().get_rect().size
+
+                # Create a list of translations
+                translations = [(0, 0), (-width, 0), (width, 0), (0, -height), (0, height), (-width, -height), (-width, height), (width, -height), (width, height)]
+
+                # Apply each translation to the original point
+                points = [(x + dx, y + dy) for dx, dy in translations]
+
+                # Find the closest point to the target point
+                closest = min(points, key=lambda p: t.distance_to(p))
+
+                if should_walk_weird:
                     t.x += self.direction.x * distance
                     t.y += self.direction.y * distance
                 else:
-                    x, y = prev
-                    width, height = pygame.display.get_surface().get_rect().size
-
-                    # Create a list of translations
-                    translations = [(0, 0), (-width, 0), (width, 0), (0, -height), (0, height), (-width, -height), (-width, height), (width, -height), (width, height)]
-
-                    # Apply each translation to the original point
-                    points = [(x + dx, y + dy) for dx, dy in translations]
-
-                    # Find the closest point to the target point
-                    closest = min(points, key=lambda p: t.distance_to(p))
-
-                    # Update the target point
                     t.x, t.y = t.move_towards(closest, distance)
+                t.direction = (closest - t).normalize()
 
                 t.x = (t.x + pygame.display.get_surface().get_rect().width) % pygame.display.get_surface().get_rect().width
                 t.y = (t.y + pygame.display.get_surface().get_rect().height) % pygame.display.get_surface().get_rect().height
 
 
     def consume(self, fruit):
-        fruit.respawn()
         last = self.tail[-1] if self.tail else self
         new_tail = Circle(last.x, last.y, self.r, self.color, outline_width=int(self.r / 2))
+        new_tail.direction = last.direction
         self.tail.append(new_tail)
+        # time = 0
+        # if fruit.gives_wall_walking:
+        #     time = 5
+        # elif fruit.gives_weird_walking:
+        #     time = 5
+        # elif fruit.gives_wall_walking and fruit.gives_weird_walking:
+        #     time = 5
+        # if time:
+        #     self.set_timer(time, fruit.color)
+        
+        fruit.respawn()
         
 
     def draw(self):
+        if self.timer > 0:
+            self.draw_with_timer()
+            return
         super().draw()
         for t in self.tail:
             t.draw()
+
+    def set_timer(self, time, color):
+        self.timer = time
+        self.timer_max = time
+        self.timer_color = color
+
+    def update_timer(self, delta):
+        self.timer = max(0, self.timer - delta)
+
+    def draw_with_timer(self):
+        num_of_segments = len(self.tail) + 1
+        segments_to_color = (num_of_segments * self.timer) / self.timer_max
+        fully_colored = int(math.floor(segments_to_color))
+        rest = segments_to_color - fully_colored
+        segments = [self] + self.tail
+        for segment, percentage in zip(segments, fully_colored * [1] + [rest] + (num_of_segments - fully_colored - 1) * [0]):
+            current_sur = segment.surface
+            segment.surface = pygameutils.paint_surface(current_sur, self.timer_color, percentage, -segment.direction)
+            if segment is self:
+                super().draw()
+            else:
+                segment.draw()
+            segment.surface = current_sur
+
 
     def draw_direction(self):
         WIDTH = int(self.r / 4)

@@ -1,6 +1,8 @@
 import pygame
 import screeninfo
 import math
+import pygameview
+import constants
 
 
 def get_screen_size():
@@ -33,32 +35,57 @@ def create_window(title, width=None, height=None, icon=None):
     else:
         next_screen_resolution()
 
-def paint_surface(square_surface: pygame.Surface, color, percentage: int, direction: pygame.Vector2) -> pygame.Surface:
+def draw_arrow(surface: pygame.Surface, color, center: pygame.Vector2, direction: pygame.Vector2, width, radius):
+    """
+    :param width: width of the line
+    :param radius: length from the center to tip of the arrow
+    """
+    pygame.draw.line(surface, color, center - direction * radius, center + direction * radius, width)
+    pygame.draw.line(surface, color, center + direction * radius, center + direction * radius - direction.rotate(45) * radius/2, width)
+    pygame.draw.line(surface, color, center + direction * radius, center + direction * radius - direction.rotate(-45) * radius/2, width)
 
-    alfa = pygame.Vector2(1, 1).angle_to(direction)
+def get_surface_corners(surface: pygame.Surface):
+    """
+    from top left corner, clockwise
+    """
+    return (
+        pygame.Vector2(0, 0),
+        pygame.Vector2(surface.get_width(), 0),
+        pygame.Vector2(surface.get_width(), surface.get_height()),
+        pygame.Vector2(0, surface.get_height())
+    )
+
+def paint_surface(square_surface: pygame.Surface, color, percentage: float, direction: pygame.Vector2) -> pygame.Surface:
+
+    if percentage <= 0:
+        return square_surface.copy()
+    elif percentage >= 1:
+        mask = pygame.mask.from_surface(square_surface)
+        return mask.to_surface(square_surface.copy(), setcolor=color, unsetcolor=None)
+
+    # don't ask me why, but this is how angle_to works
+    alfa = pygame.Vector2(-1, 0).angle_to(direction) + 45
+    alfa = abs(alfa)
     quarter = 1
     while alfa > 45:
-        quarter += 1
+        quarter -= 1
+        quarter %= 4
         alfa -= 90
 
     full_len = math.cos(math.radians(alfa)) * square_surface.get_width() * math.sqrt(2)
-    len = full_len * percentage / 100
+    len = full_len * percentage
 
     divider = direction.rotate(90)
-    point_on_divider = direction * len
-    starting_point = pygame.Vector2(0 if quarter in (1,4) else 1, 0 if quarter in (1,2) else 1) * square_surface.get_width()
+    starting_point = get_surface_corners(square_surface)[quarter]
+    point_on_divider = starting_point + direction * len
     
     painting_surface = square_surface.copy()
     pygame.draw.polygon(painting_surface, color, [
-        point_on_divider + divider * square_surface.get_width(),
-        point_on_divider - divider * square_surface.get_width(),
-        starting_point - divider * square_surface.get_width(),
-        starting_point + divider * square_surface.get_width()
+        point_on_divider + divider * square_surface.get_width()*2,
+        point_on_divider - divider * square_surface.get_width()*2,
+        starting_point - divider * square_surface.get_width()*2,
+        starting_point + divider * square_surface.get_width()*2
     ])
 
     mask = pygame.mask.from_surface(square_surface)
-
     return mask.to_surface(square_surface.copy(), painting_surface, unsetcolor=None)
-
-
-    

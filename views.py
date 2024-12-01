@@ -61,7 +61,7 @@ class GameView(pygameview.PyGameView):
                     if fruit.gives_wall_walking:
                         st.wall_walking_event_timer += 5
                     if fruit.gives_weird_walking:
-                        st.weird_walking_event_timer += 15
+                        st.weird_walking_event_timer += 5
                     if fruit.gives_wall_walking and fruit.gives_weird_walking:
                         st.destroying_event_timer += 5
                     player.consume(fruit)
@@ -93,6 +93,8 @@ class GameView(pygameview.PyGameView):
             pygameview.close_view()
 
         # update time counter
+        for player in st.alive_players():
+            player.update_timer(delta)
         st.time_passed += delta
         st.fruit_event_timer += delta
         st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
