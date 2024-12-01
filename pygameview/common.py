@@ -142,6 +142,7 @@ class WaitingView(core.PyGameView):
         self.count = 0.0
 
     def update(self, delta):
+        pygame.display.get_surface().fill(Color.BLACK)
         title(self.msg + "."*math.floor(self.count), Align.CENTER)
         self.count = (self.count + delta) % 4
 
