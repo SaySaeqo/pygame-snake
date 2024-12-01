@@ -86,13 +86,13 @@ class GameState:
     scores: list[int] = field(default_factory=list)
 
     def init(self, number_of_players):
-        radius = Game.diameter / 2
+        radius = Game().diameter / 2
         color = Color.players_colors()
         for _ in range(number_of_players):
             player = Snake.at_random_position(radius, next(color))
             self.players.append(player)
         self.fruits=[Fruit.at_random_position(radius) for _ in range(6)]
-        self.current_speed= Game.speed
+        self.current_speed= Game().speed
         self.scores=[0] * number_of_players
 
     def alive_players(self):

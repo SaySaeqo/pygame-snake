@@ -15,11 +15,12 @@ def main_menu():
         scores = game_state.scores
 
         # save scores
-        with open("leaderboard.data", "a") as file:
-            for idx, score in enumerate(scores):
-                file.write(f"{Config().names[idx]}: {score}\n")
-            names_combined = " + ".join(sorted(Config().active_players_names))
-            file.write(f"{names_combined}: {sum(scores)}\n")
+        if Game().time_limit:
+            with open("leaderboard.data", "a") as file:
+                for idx, score in enumerate(scores):
+                    file.write(f"{Config().names[idx]}: {score}\n")
+                names_combined = " + ".join(sorted(Config().active_players_names))
+                file.write(f"{names_combined}: {sum(scores)}\n")
         await show_scores(scores, Config().names)
 
         Config().save_to_file()
@@ -27,10 +28,16 @@ def main_menu():
     menu_options = ["PLAY"]
     menu_methods = [play]
 
-    next_mode = (Config().number_of_players) % 3 +1
-    async def change_mode(): Config().number_of_players = next_mode
-    menu_options += [f"{next_mode} PLAYER MODE"]
+    modes = ["1 MINUTE", "ENDLESS"]
+    async def change_mode(): Game().time_limit = 0 if Game().time_limit else 60
+    menu_options += [f"MODE: {modes[0] if Game().time_limit else modes[1]}"]
     menu_methods += [change_mode]
+
+
+    next_mode = (Config().number_of_players) % 3 +1
+    async def change_players_num(): Config().number_of_players = next_mode
+    menu_options += [f"{Config().number_of_players} PLAYER{'S' if Config().number_of_players > 1 else ''}"]
+    menu_methods += [change_players_num]
 
 
     async def change_name(which_player):

@@ -23,6 +23,8 @@ def draw_board(state: dto.GameState):
         # draw wall
         if state.wall_walking_event_timer == 0:
             pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), 1)
+        elif state.wall_walking_event_timer <2 and state.wall_walking_event_timer % 0.5 < 0.25:
+            pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), 1)
 
         # draw time and score
         time_phrase = "TIME: "
@@ -53,7 +55,7 @@ class GameView(pygameview.PyGameView):
         draw_board(self.state)
 
         for idx, player in st.enumarate_alive_players():
-            player.move(constants.Game.diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
+            player.move(constants.Game().diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
             # region COLLISION_CHECK
             # with fruits
             for fruit in st.fruits:
@@ -101,18 +103,18 @@ class GameView(pygameview.PyGameView):
         st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - delta)
         st.destroying_event_timer = max(0, st.destroying_event_timer - delta)
         if st.fruit_event_timer > 5:
-            st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game.diameter / 2))
+            st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game().diameter / 2))
             st.fruit_event_timer = 0
-        if st.time_passed > constants.Game.time_limit:
+        if constants.Game().time_limit and st.time_passed > constants.Game().time_limit:
             st.wall_event_timer += delta
-            if st.wall_event_timer > (constants.Game.time_limit**2) / (st.time_passed**2):
-                st.walls += [gameobjects.Wall.at_random_position(constants.Game.diameter)]
+            if st.wall_event_timer > (constants.Game().time_limit**2) / (st.time_passed**2):
+                st.walls += [gameobjects.Wall.at_random_position(constants.Game().diameter)]
                 st.wall_event_timer = 0
 
         # something to make it more fun!
-        st.current_speed = constants.Game.speed + 2 * int(1 + st.time_passed / 10)
+        st.current_speed = constants.Game().speed + 2 * int(1 + st.time_passed / 10)
         for player in st.alive_players():
-            player.rotation_power = constants.Game.rotation_power + int(st.time_passed / 10)
+            player.rotation_power = constants.Game().rotation_power + int(st.time_passed / 10)
 
         for snake, function in zip(st.players[:dto.Config().number_of_players], dto.Config().control_functions):
             snake.decision = function()

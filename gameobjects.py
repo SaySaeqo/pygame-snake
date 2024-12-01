@@ -139,7 +139,7 @@ class Snake(Circle):
                     t.y += self.direction.y * distance
                 else:
                     t.x, t.y = t.move_towards(closest, distance)
-                t.direction = (closest - t).normalize()
+                t.direction = (closest - t).normalize() if closest != t else prev.direction
 
                 t.x = (t.x + pygame.display.get_surface().get_rect().width) % pygame.display.get_surface().get_rect().width
                 t.y = (t.y + pygame.display.get_surface().get_rect().height) % pygame.display.get_surface().get_rect().height
