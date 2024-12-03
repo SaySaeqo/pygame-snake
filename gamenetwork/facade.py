@@ -42,14 +42,19 @@ class GeneralProtocol(asyncio.Protocol):
         connections[self.transport_address] = (transport, self)
 
     def data_received(self, data):
-        data = filter(lambda x: x, data.split(END_SEQ))
-        data = map(lambda x: json.loads(x.decode()), data)
-        data = toolz.unique(data, lambda x: x["action"])
-        for d in data:
-            self.network_listener.interceptor(d)
-            handler_name = "action_" + d["action"]
-            if hasattr(self.network_listener, handler_name):
-                getattr(self.network_listener, handler_name)(d["data"])
+        original_data = data
+        try:
+            data = filter(lambda x: x, data.split(END_SEQ))
+            data = map(lambda x: json.loads(x.decode()), data)
+            data = toolz.unique(data, lambda x: x["action"])
+            for d in data:
+                self.network_listener.interceptor(d)
+                handler_name = "action_" + d["action"]
+                if hasattr(self.network_listener, handler_name):
+                    getattr(self.network_listener, handler_name)(d["data"])
+        except Exception as e:
+            LOG.error(f"Error while processing data: {original_data}")
+            raise e
 
     def connection_lost(self, exc):
         if exc:
