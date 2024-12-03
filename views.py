@@ -21,10 +21,13 @@ def draw_board(state: dto.GameState):
             wall.draw()
 
         # draw wall
+        WALL_WIDTH = 2
+        FLICKERING_TIME = 2
+        FLICKERING_FREQUENCY = 2
         if state.wall_walking_event_timer == 0:
-            pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), 1)
-        elif state.wall_walking_event_timer <2 and state.wall_walking_event_timer % 0.5 < 0.25:
-            pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), 1)
+            pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), WALL_WIDTH)
+        elif state.wall_walking_event_timer <FLICKERING_TIME and state.wall_walking_event_timer % (1/FLICKERING_FREQUENCY) < 1/FLICKERING_FREQUENCY/2:
+            pygame.draw.rect(pygame.display.get_surface(), constants.Color.cyan, pygame.display.get_surface().get_rect(), WALL_WIDTH)
 
         # draw time and score
         time_phrase = "TIME: "
