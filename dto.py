@@ -15,6 +15,7 @@ class Config:
     names = ["snake", "snake2", "snake3"]
     number_of_players = 1
     controls = [Control(pygame.K_LEFT, pygame.K_RIGHT), Control(pygame.K_a, pygame.K_d), Control(pygame.K_j, pygame.K_l)]
+    last_connected_ip = "localhost"
     FILE_NAME = "config.data"
 
     @property
@@ -32,6 +33,7 @@ class Config:
             for control in self.controls:
                 file.write(f"player {self.controls.index(control)+1} controls: {pygame.key.name(control.left)} {pygame.key.name(control.right)}\n")
             file.write(f"resolution: {pygame.display.get_window_size()[0]} {pygame.display.get_window_size()[1]}\n")
+            file.write(f"last_connected_ip: {self.last_connected_ip}\n")
 
     def load_from_file(self):
         try:
@@ -49,6 +51,9 @@ class Config:
                     if line.startswith("resolution"):
                         parts = line.split()
                         pygameutils.create_window("Snake", int(parts[1]), int(parts[2]))
+                    if line.startswith("last_connected_ip"):
+                        parts = line.split()
+                        self.last_connected_ip = parts[1]
         except FileNotFoundError:
             ...
 

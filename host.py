@@ -40,12 +40,11 @@ async def run_host():
 
     await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
     
-    #TODO There is this weird error that you cannot connect to server if you once tried to connect during host game still playing
     while True:
         should_start = await LobbyView(host, players)
-        if not should_start:
-            break
+        if not should_start: break
 
+        dto.Config().save_to_file()
         game_state.init(len(players))
         net.send("start", pygame.display.get_window_size())
         await ReadyGoView(game_state,GameView(game_state))

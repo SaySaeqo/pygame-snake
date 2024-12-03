@@ -80,13 +80,13 @@ def controls_menu():
 
 def network_menu():
     async def join():
-        host_address_phrase = await pygameview.common.InputView("Enter host address:", "localhost")
+        host_address_phrase = await pygameview.common.InputView("Enter host address:", Config().last_connected_ip)
         if not host_address_phrase: return
         parts = host_address_phrase.split(":")
         ip = parts[0]
         port = int(parts[1]) if len(parts) > 1 else 31426
         await client.run_client((ip, port))
-
+    
     menu_options = ["CREATE ROOM", "JOIN"]
     menu_methods = [host.run_host, join]
     return menu_options, menu_methods

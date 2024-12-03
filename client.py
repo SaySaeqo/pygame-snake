@@ -104,7 +104,11 @@ async def run_client(host_address: tuple[str, int]):
     if not net.is_connected(host_address):
         constants.LOG.info("Connection aborted")
         return
-        
+    
+
+    Config().last_connected_ip = host_address
+    Config().save_to_file()
+
     global should_relaunch
     while should_relaunch:
         should_relaunch = False
