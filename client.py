@@ -106,7 +106,7 @@ async def run_client(host_address: tuple[str, int]):
         return
     
 
-    Config().last_connected_ip = host_address
+    Config().last_connected_ip = host_address[0]
     Config().save_to_file()
 
     global should_relaunch
