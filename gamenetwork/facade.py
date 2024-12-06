@@ -6,6 +6,7 @@ import toolz
 
 LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
+START_SEQ = b"\0+++\0"
 
 connections = {}
 server = None
@@ -26,6 +27,20 @@ class NetworkListener:
     def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
 
+def get_chunked_data(bytestream: bytes):
+    while True:
+        start = bytestream.find(START_SEQ)
+        end = bytestream.find(END_SEQ)
+        if end < start:
+            bytestream = bytestream[start:]
+            start = 0
+            end = bytestream.find(END_SEQ)
+        if start == -1 or end == -1:
+            return
+        yield bytestream[start + len(START_SEQ):end]
+        bytestream = bytestream[end + len(END_SEQ):]
+    
+
 class GeneralProtocol(asyncio.Protocol):
     
     def __init__(self, network_listener_factory):
@@ -44,7 +59,7 @@ class GeneralProtocol(asyncio.Protocol):
     def data_received(self, data):
         original_data = data
         try:
-            data = filter(lambda x: x, data.split(END_SEQ))
+            data = get_chunked_data(data)
             data = map(lambda x: json.loads(x.decode()), data)
             data = toolz.unique(data, lambda x: x["action"])
             for d in data:
@@ -92,7 +107,7 @@ def send(action: str, data = None, to: tuple[str, int] = None):
             LOG.error(f"Could not send message to {to}. No such connection.")
 
 def send_with_transport(transport: asyncio.WriteTransport, action: str, data = None):
-    transport.write(json.dumps({
+    transport.write(START_SEQ + json.dumps({
         "action": action,
         "data": data
     }).encode() + END_SEQ)
