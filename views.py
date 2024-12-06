@@ -130,7 +130,7 @@ class GameView(pygameview.PyGameView):
             pygameview.set_view(pygameview.common.PauseView("PAUSED", self))
 
     async def do_async(self):
-        net.send("game", self.state.to_json())
+        net.send_udp("game", self.state.to_json())
 
 class ReadyGoView(pygameview.PyGameView):
 
@@ -150,7 +150,7 @@ class ReadyGoView(pygameview.PyGameView):
             pygameview.set_view(self.next_view)
 
     async def do_async(self):
-        net.send("game", self.state.to_json())
+        net.send_udp("game", self.state.to_json())
 
 class LobbyView(pygameview.PyGameView):
 
@@ -180,4 +180,4 @@ class LobbyView(pygameview.PyGameView):
                 pygameview.close_view()
 
     async def do_async(self):
-        net.send("lobby", self.players)
+        net.send_udp("lobby", self.players)

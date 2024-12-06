@@ -61,7 +61,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
     
     async def runTest(self):
         for o in self.outgoing:
-            send_with_transport(self.sender[0], o["action"], o["data"])
+            self.sender[0].write(get_formatted_data(o["action"], o["data"]))
 
         await asyncio.sleep(.01)
         

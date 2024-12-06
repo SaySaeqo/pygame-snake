@@ -9,6 +9,7 @@ END_SEQ = b"\0---\0"
 START_SEQ = b"\0+++\0"
 
 connections = {}
+connection_udp = None
 server = None
 
 class NetworkListener:
@@ -41,13 +42,19 @@ def get_chunked_data(bytestream: bytes):
         bytestream = bytestream[end + len(END_SEQ):]
     
 
-class GeneralProtocol(asyncio.Protocol):
+class GeneralProtocol(asyncio.BaseProtocol):
     
     def __init__(self, network_listener_factory):
         self.network_listener_factory = network_listener_factory
 
-    def connection_made(self, transport: asyncio.Transport):
-        ip, port = transport.get_extra_info('peername')[:2]
+    def connection_made(self, transport: asyncio.BaseTransport):
+        if isinstance(transport, asyncio.DatagramTransport):
+            LOG.info(f"Connected made via UDP.")
+            global connection_udp
+            connection_udp = (transport, self)
+            return
+        address = transport.get_extra_info('peername')
+        ip, port = address[:2]
         if not all(map(lambda x: x.isdigit() , ip.split("."))):
             ip = "localhost"
         self.transport_address = ip, port
@@ -70,6 +77,13 @@ class GeneralProtocol(asyncio.Protocol):
         except Exception as e:
             LOG.error(f"Error while processing data: {original_data}")
             raise e
+        
+    def datagram_received(self, data, addr):
+        LOG.info(f"Datagram received from {addr}")
+        self.data_received(data)
+
+    def error_received(self, exc):
+        LOG.error("Error received: {}".format(exc))
 
     def connection_lost(self, exc):
         if exc:
@@ -88,6 +102,8 @@ class GeneralProtocol(asyncio.Protocol):
 async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
+    udp_address = address[0], address[1] + 1
+    await loop.create_datagram_endpoint(lambda : GeneralProtocol(network_listener_factory), remote_addr=udp_address)
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
@@ -95,22 +111,37 @@ async def start_server(address: tuple[str, int], network_listener_factory = lamb
     if server:
         raise Exception("Only one server can be started at a time.")
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
+    udp_address = address[0], address[1] + 1
+    await loop.create_datagram_endpoint(lambda : GeneralProtocol(network_listener_factory), local_addr=udp_address)
+
+def get_formatted_data(action: str, data = None):
+    return START_SEQ + json.dumps({
+        "action": action,
+        "data": data
+    }).encode() + END_SEQ
 
 def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
         for transport, _ in connections.values():
-            send_with_transport(transport, action, data)
+            transport.write(get_formatted_data(action, data))
     else:
         try:
-            send_with_transport(connections[to][0], action, data)
+            connections[to][0].write(get_formatted_data(action, data))
         except KeyError:
             LOG.error(f"Could not send message to {to}. No such connection.")
 
-def send_with_transport(transport: asyncio.WriteTransport, action: str, data = None):
-    transport.write(START_SEQ + json.dumps({
-        "action": action,
-        "data": data
-    }).encode() + END_SEQ)
+def send_udp(action: str, data = None, to: tuple[str, int] = None):
+    # TODO implement error handling and None handling especially
+    if to is None:
+        for address in connections.keys():
+            udp_address = address[0], address[1] + 1
+            connection_udp[0].sendto(get_formatted_data(action, data), udp_address)
+    else:
+        try:
+            udp_address = to[0], to[1] + 1
+            connection_udp[0].sendto(get_formatted_data(action, data), udp_address)
+        except KeyError:
+            LOG.error(f"Could not send UDP message to {to}. No such connection.")
 
 def is_connected(address: tuple[str, int]):
     try:
@@ -128,3 +159,8 @@ def close():
     for transport, _ in connections.values():
         transport.write_eof()
     connections.clear()
+    global connection_udp
+    if connection_udp:
+        transport, _ = connection_udp
+        transport.close()
+        connection_udp = None
