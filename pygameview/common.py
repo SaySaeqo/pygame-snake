@@ -4,7 +4,7 @@ from . import core
 from .utils import *
 
 MENU_LINE_SPACING = 30
-def titleMenuDrawer(title: str):
+def title_menu_drawer(title: str):
     return MenuDrawer(MENU_LINE_SPACING)\
         .draw(title, 72)\
         .add_space(MENU_LINE_SPACING)
@@ -20,7 +20,7 @@ class ScrollableView(core.PyGameView):
             self.visible_height = pygame.display.get_surface().get_height() - 3*MENU_LINE_SPACING - text2surface(title, 72).get_height()
     
         def update(self, delta):
-            titleMenuDrawer(self.title)\
+            title_menu_drawer(self.title)\
                 .draw_surface(self.scrollable.subsurface(pygame.Rect(
                         0, self.scroll*self.SCROLL_SPEED,
                         self.scrollable.get_width(), min(self.visible_height, self.scrollable.get_height())
@@ -56,7 +56,7 @@ class InputView(core.PyGameView):
         self.character_filter = character_filter
 
     def update(self, delta):
-        titleMenuDrawer(self.title)\
+        title_menu_drawer(self.title)\
             .draw(self.value)
 
     def handle_event(self, event):
@@ -81,7 +81,7 @@ class KeyInputView(core.PyGameView):
         self.title = title
 
     def update(self, delta):
-        titleMenuDrawer(self.title)
+        title_menu_drawer(self.title)
 
     def handle_event(self, event):
         super().handle_event(event)
@@ -102,7 +102,7 @@ class MenuView(core.PyGameView):
             self.choice = choice
     
         def update(self, delta):
-            drawer = titleMenuDrawer(self.title)
+            drawer = title_menu_drawer(self.title)
             for idx, option in enumerate(self.options):
                 if idx == self.choice:
                     selected = get_with_outline(text2surface(option), self.OUTLINE_WIDTH)
@@ -142,7 +142,7 @@ class WaitingView(core.PyGameView):
         self.count = 0.0
 
     def update(self, delta):
-        pygame.display.get_surface().fill(Color.BLACK)
+        pygame.display.get_surface().fill(Color.black)
         title(self.msg + "."*math.floor(self.count), Align.CENTER)
         self.count = (self.count + delta) % 4
 
