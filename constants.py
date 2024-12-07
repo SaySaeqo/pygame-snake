@@ -48,3 +48,5 @@ class Game:
     rotation_power = 4
 
 LOG = logging.getLogger("snake")
+
+DEFAULT_PORT = 52413

@@ -84,7 +84,8 @@ def network_menu():
         if not host_address_phrase: return
         parts = host_address_phrase.split(":")
         ip = parts[0]
-        port = int(parts[1]) if len(parts) > 1 else 31426
+        
+        port = int(parts[1]) if len(parts) > 1 else DEFAULT_PORT
         await client.run_client((ip, port))
     
     menu_options = ["CREATE ROOM", "JOIN"]

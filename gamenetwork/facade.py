@@ -41,6 +41,20 @@ def get_chunked_data(bytestream: bytes):
         yield bytestream[start + len(START_SEQ):end]
         bytestream = bytestream[end + len(END_SEQ):]
     
+def distribute_data(data, listener: NetworkListener):
+    original_data = data
+    try:
+        data = get_chunked_data(data)
+        data = map(lambda x: json.loads(x.decode()), data)
+        data = toolz.unique(data, lambda x: x["action"])
+        for d in data:
+            listener.interceptor(d)
+            handler_name = "action_" + d["action"]
+            if hasattr(listener, handler_name):
+                getattr(listener, handler_name)(d["data"])
+    except Exception as e:
+        LOG.error(f"Error while processing data: {original_data}")
+        raise e
 
 class GeneralProtocol(asyncio.BaseProtocol):
     
@@ -52,6 +66,7 @@ class GeneralProtocol(asyncio.BaseProtocol):
             LOG.info(f"Connected made via UDP.")
             global connection_udp
             connection_udp = (transport, self)
+            
             return
         address = transport.get_extra_info('peername')
         ip, port = address[:2]
@@ -64,23 +79,11 @@ class GeneralProtocol(asyncio.BaseProtocol):
         connections[self.transport_address] = (transport, self)
 
     def data_received(self, data):
-        original_data = data
-        try:
-            data = get_chunked_data(data)
-            data = map(lambda x: json.loads(x.decode()), data)
-            data = toolz.unique(data, lambda x: x["action"])
-            for d in data:
-                self.network_listener.interceptor(d)
-                handler_name = "action_" + d["action"]
-                if hasattr(self.network_listener, handler_name):
-                    getattr(self.network_listener, handler_name)(d["data"])
-        except Exception as e:
-            LOG.error(f"Error while processing data: {original_data}")
-            raise e
+        distribute_data(data, self.network_listener)
         
     def datagram_received(self, data, addr):
         LOG.info(f"Datagram received from {addr}")
-        self.data_received(data)
+        distribute_data(data, self.network_listener)
 
     def error_received(self, exc):
         LOG.error("Error received: {}".format(exc))
