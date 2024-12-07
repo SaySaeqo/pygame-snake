@@ -3,6 +3,7 @@ import atexit
 import json
 import logging
 import toolz
+import typing
 
 LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
@@ -28,7 +29,13 @@ class NetworkListener:
     def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
 
-def get_chunked_data(bytestream: bytes):
+def get_sendready_data(action: str, data = None) -> bytes:
+    return START_SEQ + json.dumps({
+        "action": action,
+        "data": data
+    }).encode() + END_SEQ
+
+def get_readready_data_generator(bytestream: bytes) -> typing.Generator[typing.Any, None, None]:
     while True:
         start = bytestream.find(START_SEQ)
         end = bytestream.find(END_SEQ)
@@ -38,14 +45,13 @@ def get_chunked_data(bytestream: bytes):
             end = bytestream.find(END_SEQ)
         if start == -1 or end == -1:
             return
-        yield bytestream[start + len(START_SEQ):end]
+        yield json.loads(bytestream[start + len(START_SEQ):end].decode())
         bytestream = bytestream[end + len(END_SEQ):]
     
 def distribute_data(data, listener: NetworkListener):
     original_data = data
     try:
-        data = get_chunked_data(data)
-        data = map(lambda x: json.loads(x.decode()), data)
+        data = get_readready_data_generator(data)
         data = toolz.unique(data, lambda x: x["action"])
         for d in data:
             listener.interceptor(d)
@@ -117,19 +123,13 @@ async def start_server(address: tuple[str, int], network_listener_factory = lamb
     udp_address = address[0], address[1] + 1
     await loop.create_datagram_endpoint(lambda : GeneralProtocol(network_listener_factory), local_addr=udp_address)
 
-def get_formatted_data(action: str, data = None):
-    return START_SEQ + json.dumps({
-        "action": action,
-        "data": data
-    }).encode() + END_SEQ
-
 def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
         for transport, _ in connections.values():
-            transport.write(get_formatted_data(action, data))
+            transport.write(get_sendready_data(action, data))
     else:
         try:
-            connections[to][0].write(get_formatted_data(action, data))
+            connections[to][0].write(get_sendready_data(action, data))
         except KeyError:
             LOG.error(f"Could not send message to {to}. No such connection.")
 
@@ -138,15 +138,15 @@ def send_udp(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
         for address in connections.keys():
             udp_address = address[0], address[1] + 1
-            connection_udp[0].sendto(get_formatted_data(action, data), udp_address)
+            connection_udp[0].sendto(get_sendready_data(action, data), udp_address)
     else:
         try:
             udp_address = to[0], to[1] + 1
-            connection_udp[0].sendto(get_formatted_data(action, data), udp_address)
+            connection_udp[0].sendto(get_sendready_data(action, data), udp_address)
         except KeyError:
             LOG.error(f"Could not send UDP message to {to}. No such connection.")
 
-def is_connected(address: tuple[str, int]):
+def is_connected(address: tuple[str, int]) -> bool:
     try:
         return not connections[address][0].is_closing()
     except KeyError:
