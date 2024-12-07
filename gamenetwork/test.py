@@ -3,6 +3,29 @@ from .facade import *
 import asyncio
 import logging
 
+class DataTransformTestCase(unittest.TestCase):
+    def runTest(self):
+        senddata = get_sendready_data("hello", [1, 2, 3, 4, 5])
+        self.assertIsInstance(senddata, bytes, "get_sendready_data does not return bytes")
+        senddata = senddata + b"hello"
+        senddata = senddata + get_sendready_data("hello", [1, 2, 3, 4, 5])
+        readdata = get_readready_data_generator(senddata)
+        for d in readdata:
+            self.assertEqual(d["action"], "hello", "Action is not hello")
+            self.assertEqual(d["data"], [1, 2, 3, 4, 5], "Data is not [1, 2, 3, 4, 5]")
+        self.assertIsInstance(senddata, bytes, "get_readready_data_generator is not pure")
+
+class DataDistributionTestCase(unittest.TestCase):
+    
+    def runTest(self):
+        senddata = get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = senddata + b"hello"
+        senddata = senddata + get_sendready_data("hello", [1, 2, 3, 4, 5])
+
+        distribute_data(senddata, NetworkListener(("localhost", 31425)))
+        self.assertIsInstance(senddata, bytes, "distribute_data is not pure")
+        
+
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
         try:
