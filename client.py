@@ -97,6 +97,7 @@ async def run_client(host_address: tuple[str, int]):
     except OSError as e:
         constants.LOG.error(e)
         constants.LOG.info("Could not connect to the server")
+        net.close()
         return
     finally:
         await pygameview.wait_closed()
