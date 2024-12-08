@@ -8,6 +8,7 @@ import typing
 LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
 START_SEQ = b"\0+++\0"
+UDP_HANDSHAKE_ACTION_NAME = "udp_connected"
 
 connections = {}
 udp_addresses = {}
@@ -89,12 +90,12 @@ class GeneralProtocol(asyncio.Protocol):
         self.network_listener.connected()
         global connections
         connections[self.transport_address] = (transport, self)
-        transport.write(get_sendready_data("udb_connected", connection_udp[0].get_extra_info('sockname')[1]))
+        transport.write(get_sendready_data(UDP_HANDSHAKE_ACTION_NAME, connection_udp[0].get_extra_info('sockname')[1]))
 
     def data_received(self, data):
         global udp_addresses
         if not self.transport_address in udp_addresses.keys():
-            port = next((_["data"] for _ in get_readready_data_generator(data) if _["action"] == "udb_connected"), None)
+            port = next((_["data"] for _ in get_readready_data_generator(data) if _["action"] == UDP_HANDSHAKE_ACTION_NAME), None)
             if port:
                 udp_address = self.transport_address[0], port
                 udp_addresses[self.transport_address] = udp_address

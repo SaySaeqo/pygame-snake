@@ -62,6 +62,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
                 self.received = []
                 self.count = 0
                 self.connected = False
+                self.udp_connected = False
 
         self.serverTester_data = serverData = TesterData()
         self.endpointTester_data = endpointData = TesterData()
@@ -70,6 +71,9 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def connected(self):
                 serverData.connected = True
 
+            def action_udp_connected(self, port):
+                serverData.udp_connected = True
+
             def action_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
@@ -77,10 +81,16 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
 
             def disconnected(self):
                 serverData.connected = False
+
+            def udp_disconnected(self):
+                serverData.udp_connected = False
         
         class EndPointTester(server.NetworkListener):
             def connected(self):
                 endpointData.connected = True
+            
+            def action_udp_connected(self, port):
+                endpointData.udp_connected = True
             
             def action_gotit(self, data):
                 endpointData.received.append(data)
@@ -88,19 +98,27 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
 
             def disconnected(self):
                 endpointData.connected = False
+
+            def udp_disconnected(self):
+                endpointData.udp_connected = False
         
         server_adress = ("localhost", 31426)
         await server.start_server(server_adress, lambda address: ServerTester(address))
         await client.connect_to_server(server_adress, lambda address: EndPointTester(address))
     
     async def runTest(self):
-        for o in self.outgoing:
-            client.send(o["action"], o["data"])
-
+        
         await asyncio.sleep(.01)
         
         self.assertTrue(self.serverTester_data.connected, "Server is not connected")
         self.assertTrue(self.endpointTester_data.connected, "Endpoint is not connected")
+        self.assertTrue(self.serverTester_data.udp_connected, "Server is not udp connected")
+        self.assertTrue(self.endpointTester_data.udp_connected, "Endpoint is not udp connected")
+
+        for o in self.outgoing:
+            client.send(o["action"], o["data"])
+
+        await asyncio.sleep(.01)
 
         self.assertTrue(self.serverTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.serverTester_data.count}")
         self.assertTrue(self.endpointTester_data.count == self.count, f"Didn't receive the right number of messages. Expected {self.count}, got {self.endpointTester_data.count}")   
@@ -122,9 +140,13 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.01)
         
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
+        # self.assertFalse(self.serverTester_data.udp_connected, "Server did not get udp disconnected event from endpoint")
+        self.assertFalse(self.endpointTester_data.connected, "Endpoint did not get disconnected event from server")
+        self.assertFalse(self.endpointTester_data.udp_connected, "Endpoint did not get udp disconnected event from server")
 
     async def asyncTearDown(self):
         server.close()
+        client.close()
 
 
 
