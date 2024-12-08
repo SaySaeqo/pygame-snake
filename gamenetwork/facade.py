@@ -8,7 +8,7 @@ import typing
 LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
 START_SEQ = b"\0+++\0"
-UDP_HANDSHAKE_ACTION_NAME = "udp_connected"
+UDP_HANDSHAKE_ACTION_NAME = "udp_handshake"
 _Address = tuple[str, int]
 
 tcp_connections: dict[_Address, tuple[asyncio.Transport, asyncio.Protocol]] = {} # There are multiple connections for server only
@@ -32,8 +32,9 @@ class NetworkListener:
     def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
 
-    def action_udp_connected(self, port):
-        LOG.debug("UDP connected to " + str(self.address))
+    def udp_connected(self):
+        """ Called after UDP handshake is accepted. """
+        LOG.info("UDP handshake accepted from " + str(self.address))
 
     def udp_disconnected(self):
         LOG.debug("UDP disconnected from " + str(self.address))
@@ -116,13 +117,14 @@ class GeneralProtocol(asyncio.Protocol):
 
         # await UDB handshake
         global tcp2udp_addresses_map
-        if not self.transport_address in tcp2udp_addresses_map:
+        global udp_connection
+        if udp_connection and not self.transport_address in tcp2udp_addresses_map:
             try:
                 port = _find_action_data(data, UDP_HANDSHAKE_ACTION_NAME)
                 udp_address = self.transport_address[0], port
                 tcp2udp_addresses_map[self.transport_address] = udp_address
-                global udp_connection
                 udp_connection[1].network_listener = self.network_listener
+                self.network_listener.udp_connected()
             except ActionError as e:
                 pass
 

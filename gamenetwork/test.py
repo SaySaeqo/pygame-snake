@@ -71,7 +71,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def connected(self):
                 serverData.connected = True
 
-            def action_udp_connected(self, port):
+            def udp_connected(self):
                 serverData.udp_connected = True
 
             def action_hello(self, data):
@@ -89,7 +89,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def connected(self):
                 endpointData.connected = True
             
-            def action_udp_connected(self, port):
+            def udp_connected(self):
                 endpointData.udp_connected = True
             
             def action_gotit(self, data):
