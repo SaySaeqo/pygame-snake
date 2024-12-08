@@ -10,8 +10,9 @@ END_SEQ = b"\0---\0"
 START_SEQ = b"\0+++\0"
 
 connections = {}
-connection_udp = None
-server = None
+udp_addresses = {}
+connection_udp: tuple[asyncio.DatagramTransport, asyncio.DatagramProtocol] = None
+server: asyncio.Server = None
 
 class NetworkListener:
     def __init__(self, address: tuple[str, int]) -> None:
@@ -28,6 +29,12 @@ class NetworkListener:
 
     def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
+
+    def udp_connected(self):
+        LOG.debug("UDP connected to " + str(self.address))
+
+    def udp_disconnected(self):
+        LOG.debug("UDP disconnected from " + str(self.address))
 
 def get_sendready_data(action: str, data = None) -> bytes:
     return START_SEQ + json.dumps({
@@ -66,18 +73,13 @@ def distribute_data(data: bytes, listener: NetworkListener):
         LOG.error(f"Error while processing data: {original_data}")
         raise e
 
-class GeneralProtocol(asyncio.BaseProtocol):
+class GeneralProtocol(asyncio.Protocol):
     
     def __init__(self, network_listener_factory):
         self.network_listener_factory = network_listener_factory
         self.network_listener = None
 
     def connection_made(self, transport: asyncio.BaseTransport):
-        if isinstance(transport, asyncio.DatagramTransport):
-            LOG.info(f"Connected made via UDP.")
-            global connection_udp
-            connection_udp = (transport, self)
-            return
         address = transport.get_extra_info('peername')
         ip, port = address[:2]
         if not all(map(lambda x: x.isdigit() , ip.split("."))):
@@ -86,29 +88,20 @@ class GeneralProtocol(asyncio.BaseProtocol):
         self.network_listener: NetworkListener = self.network_listener_factory(self.transport_address)
         self.network_listener.connected()
         global connections
-        connections[self.transport_address] = (transport, self, None)
+        connections[self.transport_address] = (transport, self)
         transport.write(get_sendready_data("udb_connected", connection_udp[0].get_extra_info('sockname')[1]))
 
     def data_received(self, data):
-        d = get_readready_data_generator(data)
-        for dd in d:
-            if dd["action"] == "udb_connected":
-                port = dd["data"]
-                global connections
-                connections[self.transport_address] = (connections[self.transport_address][0], connections[self.transport_address][1], (self.transport_address[0], port))
+        global udp_addresses
+        if not self.transport_address in udp_addresses.keys():
+            port = next((_["data"] for _ in get_readready_data_generator(data) if _["action"] == "udb_connected"), None)
+            if port:
+                udp_address = self.transport_address[0], port
+                udp_addresses[self.transport_address] = udp_address
                 global connection_udp
-                transport_address = (self.transport_address[0], port)
-                connection_udp[1].transport_address = transport_address
-                connection_udp[1].network_listener = connection_udp[1].network_listener_factory(transport_address)
-                # TODO zrobić coś z podwójnym wywołaniem connected i disconnected
-                connection_udp[1].network_listener.connected()
+                # TODO connection_udp is None while reconnecting ??
+                connection_udp[1].network_listener = self.network_listener
         distribute_data(data, self.network_listener)
-        
-    def datagram_received(self, data, addr):
-        distribute_data(data, self.network_listener)
-
-    def error_received(self, exc):
-        LOG.error("Error received: {}".format(exc))
 
     def eof_received(self):
         # TODO to faktycznie się wywołuje, do ogarnięcia czy można bez tego
@@ -121,17 +114,47 @@ class GeneralProtocol(asyncio.BaseProtocol):
         global connections
         try:
             if not connections[self.transport_address][0].is_closing():
-                LOG.error(f"Connection lost but not closed: {self.transport_address}")
+                LOG.warning(f"Connection lost but not closed: {self.transport_address}")
                 connections[self.transport_address][0].close()
             del connections[self.transport_address]
         except KeyError:
             pass
 
+class GeneralDatagramProtocol(asyncio.DatagramProtocol):
+    def __init__(self):
+        self.network_listener: NetworkListener = None
+
+    def connection_made(self, transport: asyncio.DatagramProtocol):
+        global connection_udp
+        connection_udp = (transport, self)
+        
+    def datagram_received(self, data, addr):
+        distribute_data(data, self.network_listener)
+
+    def error_received(self, exc):
+        LOG.error("Error received: {}".format(exc))
+
+    def connection_lost(self, exc):
+        if exc:
+            LOG.error("UDP connection lost due to error: {}".format(exc))
+
+        if self.network_listener:
+            self.network_listener.udp_disconnected()
+    
+        global connection_udp
+        if connection_udp and not connection_udp[0].is_closing():
+            LOG.warning(f"UDP connection lost but not closed.")
+            connection_udp[0].close()
+        connection_udp = None
+
+        global udp_addresses
+        udp_addresses.clear()
+
 
 async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     udp_address = address[0], address[1] + 1
-    u_t, u_p = await loop.create_datagram_endpoint(lambda : GeneralProtocol(network_listener_factory), remote_addr=udp_address)
+    u_t, u_p = await loop.create_datagram_endpoint(GeneralDatagramProtocol, remote_addr=udp_address)
     t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
@@ -141,11 +164,11 @@ async def start_server(address: tuple[str, int], network_listener_factory = lamb
         raise Exception("Only one server can be started at a time.")
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
     udp_address = address[0], address[1] + 1
-    await loop.create_datagram_endpoint(lambda : GeneralProtocol(network_listener_factory), local_addr=udp_address)
+    await loop.create_datagram_endpoint(GeneralDatagramProtocol, local_addr=udp_address)
 
 def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:
-        for transport, _, _ in connections.values():
+        for transport, _ in connections.values():
             transport.write(get_sendready_data(action, data))
     else:
         try:
@@ -156,11 +179,11 @@ def send(action: str, data = None, to: tuple[str, int] = None):
 def send_udp(action: str, data = None, to: tuple[str, int] = None):
     # TODO implement error handling and None handling especially
     if to is None:
-        for _, _, udp_address in connections.values():
+        for udp_address in udp_addresses.values():
             connection_udp[0].sendto(get_sendready_data(action, data), udp_address)
     else:
         try:
-            udp_address = connections[to][2]
+            udp_address = udp_addresses[to]
             connection_udp[0].sendto(get_sendready_data(action, data), udp_address)
         except KeyError:
             LOG.error(f"Could not send UDP message to {to}. No such connection.")
@@ -177,12 +200,17 @@ def close():
     if server:
         server.close()
     server = None
+
     global connections
-    for transport, _, _ in connections.values():
+    for transport, _ in connections.values():
         transport.write_eof()
     connections.clear()
+
     global connection_udp
     if connection_udp:
         transport, _ = connection_udp
         transport.close()
-        connection_udp = None
+    connection_udp = None
+
+    global udp_addresses
+    udp_addresses.clear()
