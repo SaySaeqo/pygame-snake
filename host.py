@@ -38,7 +38,12 @@ async def run_host():
     players = [[name, server_address] for name in dto.Config().active_players_names]
     game_state = dto.GameState()
 
-    await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+    try:
+        await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+    except OSError as e:
+        constants.LOG.error(f"Could not start the server: {e}")
+        net.close()
+        return
     
     while True:
         should_start = await LobbyView(host, players)

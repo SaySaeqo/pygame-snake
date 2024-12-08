@@ -110,6 +110,7 @@ async def run_client(host_address: tuple[str, int]):
     Config().save_to_file()
 
     global should_relaunch
+    should_relaunch = True
     while should_relaunch:
         should_relaunch = False
         net.send("join", Config().active_players_names)

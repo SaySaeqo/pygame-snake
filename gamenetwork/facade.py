@@ -100,13 +100,8 @@ class GeneralProtocol(asyncio.Protocol):
                 udp_address = self.transport_address[0], port
                 udp_addresses[self.transport_address] = udp_address
                 global connection_udp
-                # TODO connection_udp is None while reconnecting ??
                 connection_udp[1].network_listener = self.network_listener
         distribute_data(data, self.network_listener)
-
-    def eof_received(self):
-        # TODO to faktycznie się wywołuje, do ogarnięcia czy można bez tego
-        LOG.info("EOF received")
 
     def connection_lost(self, exc):
         if exc:
@@ -124,10 +119,6 @@ class GeneralProtocol(asyncio.Protocol):
 class GeneralDatagramProtocol(asyncio.DatagramProtocol):
     def __init__(self):
         self.network_listener: NetworkListener = None
-
-    def connection_made(self, transport: asyncio.DatagramProtocol):
-        global connection_udp
-        connection_udp = (transport, self)
         
     def datagram_received(self, data, addr):
         distribute_data(data, self.network_listener)
@@ -153,19 +144,23 @@ class GeneralDatagramProtocol(asyncio.DatagramProtocol):
 
 
 async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
+    # close()
     loop = asyncio.get_running_loop()
     udp_address = address[0], address[1] + 1
-    u_t, u_p = await loop.create_datagram_endpoint(GeneralDatagramProtocol, remote_addr=udp_address)
+    global connection_udp
+    connection_udp = await loop.create_datagram_endpoint(GeneralDatagramProtocol, remote_addr=udp_address)
     t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
+    # close()
     loop = asyncio.get_running_loop()
     global server
     if server:
         raise Exception("Only one server can be started at a time.")
     server = await loop.create_server(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
     udp_address = address[0], address[1] + 1
-    await loop.create_datagram_endpoint(GeneralDatagramProtocol, local_addr=udp_address)
+    global connection_udp
+    connection_udp = await loop.create_datagram_endpoint(GeneralDatagramProtocol, local_addr=udp_address)
 
 def send(action: str, data = None, to: tuple[str, int] = None):
     if to is None:

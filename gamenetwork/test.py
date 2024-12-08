@@ -102,9 +102,10 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def udp_disconnected(self):
                 endpointData.udp_connected = False
         
-        server_adress = ("localhost", 31426)
-        await server.start_server(server_adress, lambda address: ServerTester(address))
-        await client.connect_to_server(server_adress, lambda address: EndPointTester(address))
+        self.server_adress = ("localhost", 31426)
+        self.EndPointTester_lambda = lambda address: EndPointTester(address)
+        await server.start_server(self.server_adress, lambda address: ServerTester(address))
+        await client.connect_to_server(self.server_adress, self.EndPointTester_lambda)
     
     async def runTest(self):
         
@@ -140,9 +141,18 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.01)
         
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
-        # self.assertFalse(self.serverTester_data.udp_connected, "Server did not get udp disconnected event from endpoint")
+        self.assertTrue(self.serverTester_data.udp_connected, "Server udp connection was dropped after client disconnected")
         self.assertFalse(self.endpointTester_data.connected, "Endpoint did not get disconnected event from server")
         self.assertFalse(self.endpointTester_data.udp_connected, "Endpoint did not get udp disconnected event from server")
+
+        await client.connect_to_server(self.server_adress, self.EndPointTester_lambda)
+        await asyncio.sleep(0.01)
+
+        self.assertTrue(self.serverTester_data.connected, "Server is not reconnected")
+        self.assertTrue(self.endpointTester_data.connected, "Endpoint is not reconnected")
+        self.assertTrue(self.serverTester_data.udp_connected, "Server udp connection was dropped after client reconnected")
+        self.assertTrue(self.endpointTester_data.udp_connected, "Endpoint is not udp connected")
+
 
     async def asyncTearDown(self):
         server.close()
