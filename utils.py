@@ -1,7 +1,8 @@
 import asyncio
 import socket
+import typing
 
-async def first_completed(*coroutines):
+async def first_completed(*coroutines) -> typing.Optional[typing.Any]:
     try:
         tasks = [asyncio.create_task(c) for c in coroutines]
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -12,12 +13,12 @@ async def first_completed(*coroutines):
         for task in tasks:
             task.cancel()
 
-def find(list, key):
+def find(list, key) -> typing.Any:
     if callable(key):
         return next(x for x in list if key(x))
     return next(x for x in list if key == x)
 
-def find_index(list, key):
+def find_index(list, key) -> int:
     if callable(key):
         return next(i for i, x in enumerate(list) if key(x))
     return next(i for i, x in enumerate(list) if key == x)

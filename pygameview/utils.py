@@ -72,7 +72,7 @@ class MenuDrawer:
         self.offset += offset
         return self
 
-def get_with_outline(surface, width=2):
+def get_with_outline(surface, width=2) -> pygame.Surface:
     outline = pygame.Surface((surface.get_width() + width * 2, surface.get_height() + width * 2))
     outline.fill(Color.white)
     inner_surface = surface.copy()

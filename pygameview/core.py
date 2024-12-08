@@ -3,6 +3,7 @@ from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
+import typing
 
 DEFAULT_FPS = 60
 
@@ -11,7 +12,7 @@ class AsyncClock:
         self.time_func = time_func
         self.last_tick = time_func() or 0
  
-    async def tick(self, fps=0):
+    async def tick(self, fps=0) -> float:
         """
         It is not perfect 1/fps long tick, can be around this number, especially for windows
         """
@@ -79,7 +80,7 @@ class CurrentPyGameView:
             self.view = view
             self.closing = False
 
-    def popResult(self):
+    def popResult(self) -> typing.Optional[typing.Any]:
         result = self.result
         self.result = None
         return result
@@ -96,7 +97,7 @@ def _release_mutex():
     _mutex = False
 ############################
 
-async def run_async(view: PyGameView, fps=DEFAULT_FPS):
+async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
     try:
         _grab_mutex()
         set_view(view)
@@ -109,7 +110,7 @@ async def run_async(view: PyGameView, fps=DEFAULT_FPS):
     finally:
         _release_mutex()
 
-def run(view: PyGameView, fps=DEFAULT_FPS):
+def run(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
     try:
         _grab_mutex()
         set_view(view)

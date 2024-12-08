@@ -4,7 +4,7 @@ from . import core
 from .utils import *
 
 MENU_LINE_SPACING = 30
-def title_menu_drawer(title: str):
+def title_menu_drawer(title: str) -> MenuDrawer:
     return MenuDrawer(MENU_LINE_SPACING)\
         .draw(title, 72)\
         .add_space(MENU_LINE_SPACING)

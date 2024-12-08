@@ -5,7 +5,7 @@ import pygameview
 import constants
 
 
-def get_screen_size():
+def get_screen_size() -> tuple[int, int]:
     monitor = screeninfo.get_monitors()[0]
     return monitor.width, monitor.height
 
@@ -44,9 +44,9 @@ def draw_arrow(surface: pygame.Surface, color, center: pygame.Vector2, direction
     pygame.draw.line(surface, color, center + direction * radius, center + direction * radius - direction.rotate(45) * radius/2, width)
     pygame.draw.line(surface, color, center + direction * radius, center + direction * radius - direction.rotate(-45) * radius/2, width)
 
-def get_surface_corners(surface: pygame.Surface):
+def get_surface_corners(surface: pygame.Surface) -> tuple[pygame.Vector2, pygame.Vector2, pygame.Vector2, pygame.Vector2]:
     """
-    from top left corner, clockwise
+    From top left corner, clockwise
     """
     return (
         pygame.Vector2(0, 0),
