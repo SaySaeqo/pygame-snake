@@ -1,15 +1,25 @@
 import unittest
-from .facade import *
+
+# import facade twice as client and server
+import sys
+from . import facade as server
+names = [_ for _ in sys.modules if _.startswith(__package__)]
+for n in names: del sys.modules[n]
+from . import facade as client
+assert client != server
+#
+
 import asyncio
 import logging
+from icecream import ic
 
 class DataTransformTestCase(unittest.TestCase):
     def runTest(self):
-        senddata = get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = server.get_sendready_data("hello", [1, 2, 3, 4, 5])
         self.assertIsInstance(senddata, bytes, "get_sendready_data does not return bytes")
         senddata = senddata + b"hello"
-        senddata = senddata + get_sendready_data("hello", [1, 2, 3, 4, 5])
-        readdata = get_readready_data_generator(senddata)
+        senddata = senddata + server.get_sendready_data("hello", [1, 2, 3, 4, 5])
+        readdata = server.get_readready_data_generator(senddata)
         for d in readdata:
             self.assertEqual(d["action"], "hello", "Action is not hello")
             self.assertEqual(d["data"], [1, 2, 3, 4, 5], "Data is not [1, 2, 3, 4, 5]")
@@ -18,20 +28,22 @@ class DataTransformTestCase(unittest.TestCase):
 class DataDistributionTestCase(unittest.TestCase):
     
     def runTest(self):
-        senddata = get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = server.get_sendready_data("hello", [1, 2, 3, 4, 5])
         senddata = senddata + b"hello"
-        senddata = senddata + get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = senddata + server.get_sendready_data("hello", [1, 2, 3, 4, 5])
 
-        distribute_data(senddata, NetworkListener(("localhost", 31425)))
+        server.distribute_data(senddata, server.NetworkListener(("localhost", 31425)))
         self.assertIsInstance(senddata, bytes, "distribute_data is not pure")
         
 
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
         try:
-            await connect_to_server(("localhost", 31429))
+            await client.connect_to_server(("localhost", 31429))
         except OSError as osError:
             return
+        finally:
+            client.close()
         self.fail("Expected OSError")
 
 class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
@@ -54,19 +66,19 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.serverTester_data = serverData = TesterData()
         self.endpointTester_data = endpointData = TesterData()
         
-        class ServerTester(NetworkListener):
+        class ServerTester(server.NetworkListener):
             def connected(self):
                 serverData.connected = True
 
             def action_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
-                send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.address)
+                server.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.address)
 
             def disconnected(self):
                 serverData.connected = False
         
-        class EndPointTester(NetworkListener):
+        class EndPointTester(server.NetworkListener):
             def connected(self):
                 endpointData.connected = True
             
@@ -78,13 +90,12 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
                 endpointData.connected = False
         
         server_adress = ("localhost", 31426)
-        await start_server(server_adress, lambda address: ServerTester(address))
-        await connect_to_server(server_adress, lambda address: EndPointTester(address))
-        self.sender = connections.pop(server_adress)
+        await server.start_server(server_adress, lambda address: ServerTester(address))
+        await client.connect_to_server(server_adress, lambda address: EndPointTester(address))
     
     async def runTest(self):
         for o in self.outgoing:
-            self.sender[0].write(get_sendready_data(o["action"], o["data"]))
+            client.send(o["action"], o["data"])
 
         await asyncio.sleep(.01)
         
@@ -107,13 +118,13 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.endpointTester_data.received = []
             
 
-        self.sender[0].abort()
+        client.close()
         await asyncio.sleep(0.01)
         
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
 
     async def asyncTearDown(self):
-        close()
+        server.close()
 
 
 
