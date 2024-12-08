@@ -32,7 +32,7 @@ class NetworkListener:
     def disconnected(self):
         LOG.debug("Disconnected from " + str(self.address))
 
-    def action_udp_connected(self):
+    def action_udp_connected(self, port):
         LOG.debug("UDP connected to " + str(self.address))
 
     def udp_disconnected(self):
