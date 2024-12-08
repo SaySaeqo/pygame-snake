@@ -31,12 +31,10 @@ async def main():
         def disconnected(self):
             print("Noooo :<")
 
-    try:
-        await net.start_server((None, 1234), lambda address: Server(address))
-        while running:
-            await asyncio.sleep(0.1)
-    finally:
-        net.close()
+    await net.start_server((None, 1234), lambda address: Server(address)) # Initialization as server
+    while running:
+        await asyncio.sleep(0.1)
+    net.close() # It is going to be closed at exit anyway so don't bother to use with try finally block. It is needed only for reiniatlizing package later.
 
 asyncio.run(main())
 
@@ -68,12 +66,10 @@ async def main():
         def disconnected(self):
             print("Noooo :<")
 
-    try:
-        await net.connect_to_server(("localhost", 1234), lambda address: Client(address))
-        get_input()
-        while running:
-            await asyncio.sleep(0.1)
-    finally:
-        net.close()
+    await net.connect_to_server(("localhost", 1234), lambda address: Client(address)) # Initialization as client
+    get_input()
+    while running:
+        await asyncio.sleep(0.1)
+    net.close()
     
 asyncio.run(main())

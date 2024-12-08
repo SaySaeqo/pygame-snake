@@ -15,11 +15,11 @@ from icecream import ic
 
 class DataTransformTestCase(unittest.TestCase):
     def runTest(self):
-        senddata = server.get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = server._get_sendready_data("hello", [1, 2, 3, 4, 5])
         self.assertIsInstance(senddata, bytes, "get_sendready_data does not return bytes")
         senddata = senddata + b"hello"
-        senddata = senddata + server.get_sendready_data("hello", [1, 2, 3, 4, 5])
-        readdata = server.get_readready_data_generator(senddata)
+        senddata = senddata + server._get_sendready_data("hello", [1, 2, 3, 4, 5])
+        readdata = server._get_readready_data_generator(senddata)
         for d in readdata:
             self.assertEqual(d["action"], "hello", "Action is not hello")
             self.assertEqual(d["data"], [1, 2, 3, 4, 5], "Data is not [1, 2, 3, 4, 5]")
@@ -28,11 +28,11 @@ class DataTransformTestCase(unittest.TestCase):
 class DataDistributionTestCase(unittest.TestCase):
     
     def runTest(self):
-        senddata = server.get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = server._get_sendready_data("hello", [1, 2, 3, 4, 5])
         senddata = senddata + b"hello"
-        senddata = senddata + server.get_sendready_data("hello", [1, 2, 3, 4, 5])
+        senddata = senddata + server._get_sendready_data("hello", [1, 2, 3, 4, 5])
 
-        server.distribute_data(senddata, server.NetworkListener(("localhost", 31425)))
+        server._distribute_data(senddata, server.NetworkListener(("localhost", 31425)))
         self.assertIsInstance(senddata, bytes, "distribute_data is not pure")
         
 
