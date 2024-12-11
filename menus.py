@@ -15,12 +15,12 @@ def main_menu():
         scores = game_state.scores
 
         # save scores
-        if Game().time_limit:
-            with open("leaderboard.data", "a") as file:
-                for idx, score in enumerate(scores):
-                    file.write(f"{Config().names[idx]}: {score}\n")
-                names_combined = " + ".join(sorted(Config().active_players_names))
-                file.write(f"{names_combined}: {sum(scores)}\n")
+        with open("leaderboard.data", "a") as file:
+            mode = "1min" if Game().time_limit else "endless"
+            for idx, score in enumerate(scores):
+                file.write(f"{Config().names[idx]}: {score} ({mode})\n")
+            names_combined = " + ".join(sorted(Config().active_players_names))
+            file.write(f"{names_combined}: {sum(scores)} ({mode})\n")
         await show_scores(scores, Config().names)
 
         Config().save_to_file()

@@ -58,7 +58,10 @@ class Config:
         except FileNotFoundError:
             ...
 
-def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(": ")[1]), name_key=lambda line: line.split(": ")[0], max_results=50):
+def default_name_key(line):
+    return line.split(" ")[0] + " ".join(line.split(" ")[2:])
+
+def read_leaderboard_file(filepath, sort_key=lambda line: int(line.split(" ")[1]), name_key=default_name_key, max_results=50):
     try:
         lines = []
         with open(filepath, "r+") as file:
