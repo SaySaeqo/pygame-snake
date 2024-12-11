@@ -20,8 +20,8 @@ class NetworkListener:
     def action_someexample(self, data):
         LOG.debug("Action 'someexample' from " + str(self.address))
 
-    def interceptor(self, data):
-        LOG.debug(f"Action {data['action']} from " + str(self.address))
+    def interceptor(self, action, data):
+        LOG.debug(f"Action {action} from " + str(self.address))
 
     def connected(self):
         LOG.debug("Connected to " + str(self.address))
@@ -59,10 +59,12 @@ def _distribute_data(data: bytes, listener: NetworkListener):
         data = _get_readready_data_generator(data)
         data = toolz.unique(data, lambda x: x["action"])
         for d in data:
-            listener.interceptor(d)
-            handler_name = "action_" + d["action"]
+            action = d["action"]
+            data = d["data"]
+            listener.interceptor(action, data)
+            handler_name = "action_" + action
             if hasattr(listener, handler_name):
-                getattr(listener, handler_name)(d["data"])
+                getattr(listener, handler_name)(data)
     except Exception as e:
         LOG.error(f"Error while processing data: {original_data}")
         raise e
@@ -138,7 +140,7 @@ def send(action: str, data = None, to: tuple[str, int] = None):
         try:
             tcp_connections[to][0].write(_get_sendready_data(action, data))
         except KeyError:
-            LOG.error(f"Could not send message to {to}. No such connection.")
+            LOG.warning(f"Could not send message to {to}. No such connection.")
     else:
         for transport, _ in tcp_connections.values():
             transport.write(_get_sendready_data(action, data))
