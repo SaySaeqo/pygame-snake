@@ -32,6 +32,11 @@ class Circle(pygame.Vector2):
 
     def get_rect(self):
         return pygame.Rect(self.x - self.r, self.y - self.r, self.r * 2, self.r * 2)
+
+    def __deepcopy__(self, memo):
+        """ No copy """
+        memo[id(self)] = self
+        return self
     
     def to_json(self):
         return {

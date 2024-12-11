@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from constants import *
 from decisionfunctions import based_on_keys
 from gameobjects import *
@@ -10,6 +10,7 @@ import toolz
 class Control:
     left: int
     right: int 
+
 @utils.singleton
 class Config:
     names = ["snake", "snake2", "snake3"]
@@ -111,59 +112,28 @@ class GameState:
     def all_players_dead(self):
         return all(not player.alive for player in self.players)
 
+    def copy_values(self, other):
+        if not isinstance(other, dict):
+            other = asdict(other)
+        for k, v in other.items():
+            setattr(self, k, v)
+
     def reset(self):
-        self.players = []
-        self.fruits = []
-        self.walls = []
-        self.time_passed = 0
-        self.fruit_event_timer = 0
-        self.wall_event_timer = 0
-        self.wall_walking_event_timer = 0
-        self.weird_walking_event_timer = 0
-        self.destroying_event_timer = 0
-        self.current_speed = 0
-        self.scores = []
+        self.copy_values(GameState())
 
     def to_json(self):
-        return {
-            "players": [player.to_json() for player in self.players],
-            "fruits": [fruit.to_json() for fruit in self.fruits],
-            "walls": [wall.to_json() for wall in self.walls],
-            "time_passed": self.time_passed,
-            "fruit_event_timer": self.fruit_event_timer,
-            "wall_event_timer": self.wall_event_timer,
-            "wall_walking_event_timer": self.wall_walking_event_timer,
-            "weird_walking_event_timer": self.weird_walking_event_timer,
-            "destroying_event_timer": self.destroying_event_timer,
-            "current_speed": self.current_speed,
-            "scores": self.scores
-        }
+        res = asdict(self)
+        for k, v in res.items():
+            if isinstance(v, list) and len(v) > 0 and hasattr(v[0], "to_json"):
+                res[k] = [item.to_json() for item in v]
+        return res
     
     @classmethod
     def from_json(cls, data):
-        return cls(
-            players=[Snake.from_json(player) for player in data["players"]],
-            fruits=[Fruit.from_json(fruit) for fruit in data["fruits"]],
-            walls=[Wall.from_json(wall) for wall in data["walls"]],
-            time_passed=data["time_passed"],
-            fruit_event_timer=data["fruit_event_timer"],
-            wall_event_timer=data["wall_event_timer"],
-            wall_walking_event_timer=data["wall_walking_event_timer"],
-            weird_walking_event_timer=data["weird_walking_event_timer"],
-            destroying_event_timer=data["destroying_event_timer"],
-            current_speed=data["current_speed"],
-            scores=data["scores"]
-        )
+        data["players"] = [Snake.from_json(player) for player in data["players"]]
+        data["fruits"] = [Fruit.from_json(fruit) for fruit in data["fruits"]]
+        data["walls"] = [Wall.from_json(wall) for wall in data["walls"]]
+        res = cls()
+        res.copy_values(data)
+        return res
     
-    def copy_values(self, other):
-        self.players = other.players
-        self.fruits = other.fruits
-        self.walls = other.walls
-        self.time_passed = other.time_passed
-        self.fruit_event_timer = other.fruit_event_timer
-        self.wall_event_timer = other.wall_event_timer
-        self.wall_walking_event_timer = other.wall_walking_event_timer
-        self.weird_walking_event_timer = other.weird_walking_event_timer
-        self.destroying_event_timer = other.destroying_event_timer
-        self.current_speed = other.current_speed
-        self.scores = other.scores

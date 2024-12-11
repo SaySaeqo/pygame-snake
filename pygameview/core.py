@@ -58,6 +58,8 @@ def current_view_name() -> str:
 
 def set_view(view):
     global _current_view, _closing
+    if view is _current_view:
+        return
     if view is None:
         _closing = True
     else:
@@ -116,26 +118,34 @@ future = loop.create_future()
 
 
 async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
-    if current_view():
-        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
-    set_view(view)
-    clock = AsyncClock()
-    while current_view():
-        delta = await clock.tick(fps)
-        await _update_async(delta)
-    return pop_result()
+    try:
+        if current_view():
+            raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
+        set_view(view)
+        clock = AsyncClock()
+        while current_view():
+            delta = await clock.tick(fps)
+            await _update_async(delta)
+        return pop_result()
+    finally:
+        global _current_view
+        _current_view = None
 
 def run(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
-    if current_view():
-        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
-    set_view(view)
-    clock = pygame.time.Clock()
-    while current_view():
-        delta = clock.tick(fps) / 1000.0
-        _update(delta)
-    return pop_result()
+    try:
+        if current_view():
+            raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
+        set_view(view)
+        clock = pygame.time.Clock()
+        while current_view():
+            delta = clock.tick(fps) / 1000.0
+            _update(delta)
+        return pop_result()
+    finally:    
+        global _current_view
+        _current_view = None
 
 async def wait_closed():
-    while current_view() is not None:
+    while current_view():
         await asyncio.sleep(0)
 
