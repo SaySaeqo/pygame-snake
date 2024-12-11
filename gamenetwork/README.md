@@ -31,10 +31,10 @@ async def main():
         def disconnected(self):
             print("Noooo :<")
 
-    await net.start_server((None, 1234), lambda address: Server(address)) # Initialization as server
-    while running:
-        await asyncio.sleep(0.1)
-    net.close() # It is going to be closed at exit anyway so don't bother to use with try finally block. It is needed only for reiniatlizing package later.
+    with net.ContextManager():
+        await net.start_server((None, 1234), lambda address: Server(address))
+        while running:
+            await asyncio.sleep(0.1)
 
 asyncio.run(main())
 
@@ -45,7 +45,7 @@ import asyncio
 async def main():
 
     running = True
-    def get_input():
+    def send_input():
         text = input("You: ")
         if text:
             net.send("hello", text)
@@ -58,7 +58,7 @@ async def main():
 
         def action_response(self, data):
             print(f"Response: {data}")
-            get_input()
+            send_input()
 
         def connected(self):
             print("I am connected <3")
@@ -66,10 +66,10 @@ async def main():
         def disconnected(self):
             print("Noooo :<")
 
-    await net.connect_to_server(("localhost", 1234), lambda address: Client(address)) # Initialization as client
-    get_input()
-    while running:
-        await asyncio.sleep(0.1)
-    net.close()
+    with net.ContextManager():
+        await net.connect_to_server(("localhost", 1234), lambda address: Client(address))
+        send_input()
+        while running:
+            await asyncio.sleep(0.1)
     
 asyncio.run(main())

@@ -38,29 +38,27 @@ async def run_host():
     players = [[name, server_address] for name in dto.Config().active_players_names]
     game_state = dto.GameState()
 
-    try:
-        await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
-    except OSError as e:
-        constants.LOG.error(f"Could not start the server: {e}")
-        net.close()
-        return
-    
-    while True:
-        should_start = await LobbyView(host, players)
-        if not should_start: break
+    with net.ContextManager():
+        try:
+            await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+        except OSError as e:
+            constants.LOG.error(f"Could not start the server: {e}")
+            return
+        
+        while True:
+            should_start = await LobbyView(host, players)
+            if not should_start: return
 
-        dto.Config().save_to_file()
-        game_state.init(len(players))
-        net.send("start", pygame.display.get_window_size())
-        await ReadyGoView(game_state,GameView(game_state))
-        players_copy = players.copy()
-        players.clear()
-        players.extend([name, server_address] for name in dto.Config().active_players_names)
-        net.send("score", game_state.to_json())
-        await show_scores(game_state.scores, players_copy)
-        game_state.reset()
-
-    net.close()
+            dto.Config().save_to_file()
+            game_state.init(len(players))
+            net.send("start", pygame.display.get_window_size())
+            await ReadyGoView(game_state,GameView(game_state))
+            players_copy = players.copy()
+            players.clear()
+            players.extend([name, server_address] for name in dto.Config().active_players_names)
+            net.send("score", game_state.to_json())
+            await show_scores(game_state.scores, players_copy)
+            game_state.reset()
 
 
 

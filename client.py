@@ -88,34 +88,32 @@ class ClientNetworkListener(net.NetworkListener):
 
 
 async def run_client(host_address: tuple[str, int]):
-    try:
-        await first_completed(
-            net.connect_to_server(host_address, lambda address: ClientNetworkListener(address)),
-            pygameview.run_async(pygameview.common.WaitingView("Connecting to server"))
-            )
-    except OSError as e:
-        constants.LOG.error(e)
-        constants.LOG.info("Could not connect to the server")
-        net.close()
-        return
-    finally:
-        await pygameview.wait_closed()
-    
-    if not net.is_connected(host_address):
-        constants.LOG.info("Connection aborted")
-        return
-    
+    with net.ContextManager():
+        try:
+            await first_completed(
+                net.connect_to_server(host_address, lambda address: ClientNetworkListener(address)),
+                pygameview.run_async(pygameview.common.WaitingView("Connecting to server"))
+                )
+        except OSError as e:
+            constants.LOG.error(e)
+            constants.LOG.info("Could not connect to the server")
+            return
+        finally:
+            await pygameview.wait_closed()
+        
+        if not net.is_connected(host_address):
+            constants.LOG.info("Connection aborted")
+            return
+        
+        Config().last_connected_ip = host_address[0]
+        Config().save_to_file()
 
-    Config().last_connected_ip = host_address[0]
-    Config().save_to_file()
-
-    global should_relaunch
-    should_relaunch = True
-    while should_relaunch:
-        should_relaunch = False
-        net.send("join", Config().active_players_names)
-        await ClientLobbyView(host_address)
-    net.close()
+        global should_relaunch
+        should_relaunch = True
+        while should_relaunch:
+            should_relaunch = False
+            net.send("join", Config().active_players_names)
+            await ClientLobbyView(host_address)
     
 
     
