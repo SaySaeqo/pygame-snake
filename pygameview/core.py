@@ -1,5 +1,4 @@
 import pygame
-from singleton_decorator import singleton
 import sys
 import logging
 import asyncio
@@ -44,97 +43,99 @@ class PyGameView:
     def __await__(self):
         return run_async(self).__await__()
 
-@singleton
-class CurrentPyGameView:
+_current_view: PyGameView = None
+_closing = False
 
-    view = PyGameView()
-    result = None
+def current_view() -> typing.Optional[PyGameView]:
+    """
+    Returns the current view that is being displayed.
+    """
+    global _current_view
+    return _current_view
 
-    async def update_async(self, delta):
-        if self.view is None:
-            return
-        self.view.update(delta)
-        pygame.display.flip()
-        for event in pygame.event.get():
-            self.view.handle_event(event)
-        await self.view.do_async()
-        if self.closing:
-            self.view = None
-            self.closing = False
+def current_view_name() -> str:
+    return current_view().__class__.__name__ if _current_view else None
 
-    def update(self, delta):
-        if self.view is None:
-            return
-        self.view.update(delta)
-        pygame.display.flip()
-        for event in pygame.event.get():
-            self.view.handle_event(event)
-        if self.closing:
-            self.view = None
-            self.closing = False
-
-    def set(self, view):
-        if view is None:
-            self.closing = True
-        else:
-            self.view = view
-            self.closing = False
-
-    def popResult(self) -> typing.Optional[typing.Any]:
-        result = self.result
-        self.result = None
-        return result
-
-# just to make sure that only one view is running at the same time
-_mutex = False
-def _grab_mutex():
-    global _mutex
-    if _mutex:
-        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + CurrentPyGameView().view.__class__.__name__)
-    _mutex = True
-def _release_mutex():
-    global _mutex
-    _mutex = False
-############################
-
-async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
-    try:
-        _grab_mutex()
-        set_view(view)
-        clock = AsyncClock()
-        while CurrentPyGameView().view:
-            delta = await clock.tick(fps)
-            await CurrentPyGameView().update_async(delta)
-        result = CurrentPyGameView().popResult()
-        return result
-    finally:
-        _release_mutex()
-
-def run(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
-    try:
-        _grab_mutex()
-        set_view(view)
-        clock = pygame.time.Clock()
-        while CurrentPyGameView().view:
-            delta = clock.tick(fps) / 1000.0
-            CurrentPyGameView().update(delta)
-        result = CurrentPyGameView().popResult()
-        return result
-    finally:
-        _release_mutex()
-
-def set_view(view: PyGameView):
-    CurrentPyGameView().set(view)
-    logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__}")
+def set_view(view):
+    global _current_view, _closing
+    if view is None:
+        _closing = True
+    else:
+        _current_view = view
+        _closing = False
+    logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__ if view else None}")
 
 def close_view():
     set_view(None)
 
-def close_view_with_result(result):
-    CurrentPyGameView().result = result
+_result = None
+
+def set_result(res):
+    global _result
+    _result = res
+
+def pop_result() -> typing.Optional[typing.Any]:
+    global _result
+    result = _result
+    _result = None
+    return result
+
+def close_view_with_result(res):
+    set_result(res)
     close_view()
 
+async def _update_async(delta):
+    if current_view() is None:
+        return
+    current_view().update(delta)
+    pygame.display.update()
+    for event in pygame.event.get():
+        current_view().handle_event(event)
+    await current_view().do_async()
+
+    global _current_view, _closing
+    if _closing:
+        _current_view = None
+        _closing = False
+
+def _update(delta):
+    if current_view() is None:
+        return
+    current_view().update(delta)
+    pygame.display.update()
+    for event in pygame.event.get():
+        current_view().handle_event(event)
+
+    global _current_view, _closing
+    if _closing:
+        _current_view = None
+        _closing = False
+
+loop = asyncio.get_event_loop()
+future = loop.create_future()
+
+
+async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
+    if current_view():
+        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
+    set_view(view)
+    clock = AsyncClock()
+    while current_view():
+        delta = await clock.tick(fps)
+        await _update_async(delta)
+    return pop_result()
+
+def run(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
+    if current_view():
+        raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
+    set_view(view)
+    clock = pygame.time.Clock()
+    while current_view():
+        delta = clock.tick(fps) / 1000.0
+        _update(delta)
+    return pop_result()
+
 async def wait_closed():
-    while _mutex:
+    while current_view() is not None:
         await asyncio.sleep(0)
 

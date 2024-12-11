@@ -36,3 +36,9 @@ def get_my_ip() -> str:
     first_ip = filtered_ips[:1]
 
     return first_ip[0] if first_ip else None
+
+def singleton(cls):
+    instance=cls()
+    cls.__new__ = cls.__call__= lambda cls: instance
+    cls.__init__ = lambda self: None
+    return instance

@@ -1,5 +1,5 @@
 import logging
-from singleton_decorator import singleton
+import utils
 
 class Color:
     black = (0, 0, 0)
@@ -35,7 +35,7 @@ class Color:
     def players_colors():
         return (c for c in Color.values() if not c in (Color.black, Color.green, Color.cyan, Color.gold, Color.magenta))
     
-@singleton
+@utils.singleton
 class Game:
     """
     :param diameter: size of things in pixels

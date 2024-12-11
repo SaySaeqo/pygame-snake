@@ -3,7 +3,6 @@ import views
 from utils import *
 from views import *
 import pygameview
-from singleton_decorator import singleton
 from dataclasses import dataclass
 from dto import Config, GameState
 import constants

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from constants import *
 from decisionfunctions import based_on_keys
 from gameobjects import *
-from singleton_decorator import singleton
+import utils
 import pygameutils
 import toolz
 
@@ -10,7 +10,7 @@ import toolz
 class Control:
     left: int
     right: int 
-@singleton
+@utils.singleton
 class Config:
     names = ["snake", "snake2", "snake3"]
     number_of_players = 1
