@@ -112,7 +112,6 @@ class GeneralProtocol(asyncio.Protocol):
         tcp_connections[self.transport_address] = (transport, self)
 
         # send UDP handshake
-        LOG.info(f"UDP is listening on {udp_connection[0].get_extra_info('sockname')}")
         transport.write(_get_sendready_data(UDP_HANDSHAKE_ACTION_NAME, udp_connection[0].get_extra_info('sockname')[1]))
 
     def data_received(self, data):
@@ -127,7 +126,6 @@ class GeneralProtocol(asyncio.Protocol):
                 tcp2udp_addresses_map[self.transport_address] = udp_address
                 udp_connection[1].network_listener = self.network_listener
                 self.network_listener.udp_connected()
-                LOG.info(f"UDP will be sent to {udp_address}")
             except ActionError as e:
                 pass
 
@@ -155,8 +153,6 @@ class GeneralDatagramProtocol(asyncio.DatagramProtocol):
 
     def error_received(self, exc):
         LOG.warning("Error received: {}".format(exc))
-        LOG.warning(self.network_listener.address)
-        LOG.warning(tcp2udp_addresses_map[self.network_listener.address])
 
     def connection_lost(self, exc):
         if exc:
@@ -180,7 +176,7 @@ async def connect_to_server(address: tuple[str, int], network_listener_factory =
     global udp_connection
     if udp_connection:
         raise MultipleEndpointsError("Only one UDP connection can be started at a time (client).")
-    udp_connection = await loop.create_datagram_endpoint(lambda: GeneralDatagramProtocol(), family=socket.AF_INET, local_addr=(None, 9999))
+    udp_connection = await loop.create_datagram_endpoint(lambda: GeneralDatagramProtocol(), remote_addr=address)
     t, p = await loop.create_connection(lambda : GeneralProtocol(network_listener_factory), address[0], address[1])
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
@@ -188,8 +184,7 @@ async def start_server(address: tuple[str, int], network_listener_factory = lamb
     global udp_connection
     if udp_connection:
         raise MultipleEndpointsError("Only one UDP connection can be started at a time (server).")
-    udp_address = address[0], address[1] + 1
-    udp_connection = await loop.create_datagram_endpoint(lambda: GeneralDatagramProtocol(), family=socket.AF_INET, local_addr=udp_address)
+    udp_connection = await loop.create_datagram_endpoint(lambda: GeneralDatagramProtocol(), local_addr=address)
     global server
     if server:
         raise MultipleEndpointsError("Only one server can be started at a time.")

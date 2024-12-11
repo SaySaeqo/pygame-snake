@@ -33,7 +33,7 @@ class HostNetworkListener(net.NetworkListener):
         
 
 async def run_host():
-    server_address = (None, constants.DEFAULT_PORT)
+    server_address = ("0.0.0.0", constants.DEFAULT_PORT)
     host = f"{utils.get_my_ip()}:{server_address[1]}"
     players = [[name, server_address] for name in dto.Config().active_players_names]
     game_state = dto.GameState()
