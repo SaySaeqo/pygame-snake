@@ -14,6 +14,7 @@ def next_screen_resolution():
 
     if not (pygame.get_init and pygame.display.get_surface()):
         pygame.display.set_mode(RESOLUTIONS[0], pygame.FULLSCREEN if RESOLUTIONS[0] == get_screen_size() else 0)
+        pygameview.utils.set_font_scale(constants.TEXT_LINES_PER_SCREEN)
         return
 
     current_resolution = pygame.display.get_window_size()
@@ -22,6 +23,7 @@ def next_screen_resolution():
     else:
         next_resolution = RESOLUTIONS[RESOLUTIONS.index(current_resolution)+1]
     pygame.display.set_mode(next_resolution, pygame.FULLSCREEN if next_resolution == get_screen_size() else 0)
+    pygameview.utils.set_font_scale(constants.TEXT_LINES_PER_SCREEN)
 
 def create_window(title, width=None, height=None, icon=None):
     if pygame.get_init() and pygame.display.get_surface(): return
@@ -32,6 +34,7 @@ def create_window(title, width=None, height=None, icon=None):
     if width and height:
         full_screen = get_screen_size() == (width, height)
         pygame.display.set_mode((width, height), pygame.FULLSCREEN if full_screen else 0)
+        pygameview.utils.set_font_scale(constants.TEXT_LINES_PER_SCREEN)
     else:
         next_screen_resolution()
 

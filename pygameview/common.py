@@ -1,11 +1,11 @@
 import pygame
 import math
 from . import core
-from .utils import *
+from . import utils
 
 MENU_LINE_SPACING = 30
-def title_menu_drawer(title: str) -> MenuDrawer:
-    return MenuDrawer(MENU_LINE_SPACING)\
+def title_menu_drawer(title: str) -> utils.MenuDrawer:
+    return utils.MenuDrawer(MENU_LINE_SPACING)\
         .draw(title, 72)\
         .add_space(MENU_LINE_SPACING)
 
@@ -16,8 +16,8 @@ class ScrollableView(core.PyGameView):
         def __init__(self, title: str, scrollable: str):
             self.title = title
             self.scroll = 0
-            self.visible_height = pygame.display.get_surface().get_height() - 3*MENU_LINE_SPACING - text2surface(title, 72).get_height()
-            self.scrollable = text2surface(scrollable)
+            self.visible_height = pygame.display.get_surface().get_height() - 3*MENU_LINE_SPACING - utils.text2surface(title, 72).get_height()
+            self.scrollable = utils.text2surface(scrollable)
     
         def update(self, delta):
             view = pygame.Surface((self.scrollable.get_width(), self.visible_height))
@@ -105,7 +105,7 @@ class MenuView(core.PyGameView):
             drawer = title_menu_drawer(self.title)
             for idx, option in enumerate(self.options):
                 if idx == self.choice:
-                    selected = get_with_outline(text2surface(option), self.OUTLINE_WIDTH)
+                    selected = utils.get_with_outline(utils.text2surface(option), self.OUTLINE_WIDTH)
                     drawer.add_space(-self.OUTLINE_WIDTH).draw_surface(selected).add_space(self.OPTION_OFFSET-self.OUTLINE_WIDTH)
                 else:
                     drawer.draw(option).add_space(self.OPTION_OFFSET)
@@ -142,8 +142,8 @@ class WaitingView(core.PyGameView):
         self.count = 0.0
 
     def update(self, delta):
-        pygame.display.get_surface().fill(Color.black)
-        title(self.msg + "."*math.floor(self.count), Align.CENTER)
+        pygame.display.get_surface().fill(utils.Color.black)
+        utils.title(self.msg + "."*math.floor(self.count), utils.Align.CENTER)
         self.count = (self.count + delta) % 4
 
     def handle_event(self, event):
@@ -159,7 +159,7 @@ class PauseView(core.PyGameView):
         self.key_list = key_list
 
     def update(self, delta):
-        title(self.msg, Align.CENTER)
+        utils.title(self.msg, utils.Align.CENTER)
 
     def handle_event(self, event):
         super().handle_event(event)

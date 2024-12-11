@@ -8,14 +8,21 @@ class Align:
     TOP = 1
     BOTTOM = 2
 
+font_scale = 1.0
+
+def set_font_scale(lines_per_screen=16):
+    height = pygame.font.SysFont("monospace", 32).get_linesize()
+    global font_scale
+    font_scale = pygame.display.get_surface().get_height() / lines_per_screen / height
+
 def text2surface(text: str, font_size=32, with_background=False) -> pygame.Surface:
-    LINE_SPACING = 10  # distance between lines for displayed text (in pixels)
-    FONT = pygame.font.SysFont("monospace", font_size, bold=True)
+    LINE_SPACING = int(10*font_scale)  # distance between lines for displayed text (in pixels)
+    font = pygame.font.SysFont("monospace", int(font_size*font_scale), bold=True)
 
 
     # chopping line of text into separate surfaces
     lines = (t for t in text.split("\n"))
-    text_surfaces = [FONT.render(line, True, Color.white) for line in lines]
+    text_surfaces = [font.render(line, True, Color.white) for line in lines]
 
     # combining into 1 surface (align: horizontally centered)
     main_surface = pygame.Surface((
@@ -69,10 +76,12 @@ class MenuDrawer:
         return self
 
     def add_space(self, offset):
-        self.offset += offset
+        self.offset += int(offset * font_scale)
         return self
 
 def get_with_outline(surface, width=2) -> pygame.Surface:
+    if font_scale > 1:
+        width = int(width * font_scale)
     outline = pygame.Surface((surface.get_width() + width * 2, surface.get_height() + width * 2))
     outline.fill(Color.white)
     inner_surface = surface.copy()
