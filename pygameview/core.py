@@ -63,7 +63,7 @@ def set_view(view):
     else:
         _current_view = view
         _closing = False
-    logging.getLogger(__name__).debug(f"Current view set to {view.__class__.__name__ if view else None}")
+    logging.getLogger(__package__).debug(f"Current view set to {view.__class__.__name__ if view else None}")
 
 def close_view():
     set_view(None)

@@ -15,16 +15,16 @@ class ScrollableView(core.PyGameView):
     
         def __init__(self, title: str, scrollable: str):
             self.title = title
-            self.scrollable = text2surface(scrollable)
             self.scroll = 0
             self.visible_height = pygame.display.get_surface().get_height() - 3*MENU_LINE_SPACING - text2surface(title, 72).get_height()
+            self.scrollable = text2surface(scrollable)
     
         def update(self, delta):
-            title_menu_drawer(self.title)\
-                .draw_surface(self.scrollable.subsurface(pygame.Rect(
-                        0, self.scroll*self.SCROLL_SPEED,
-                        self.scrollable.get_width(), min(self.visible_height, self.scrollable.get_height())
-                    )))
+            view = pygame.Surface((self.scrollable.get_width(), self.visible_height))
+            scrolled = self.scrollable.copy()
+            scrolled.scroll(0, -self.scroll*self.SCROLL_SPEED)
+            view.blit(scrolled, (0, 0))
+            title_menu_drawer(self.title).draw_surface(view)
             
             keys = pygame.key.get_pressed()
             if keys[pygame.K_DOWN]:

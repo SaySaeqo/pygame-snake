@@ -42,7 +42,7 @@ async def run_host():
         try:
             await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
         except OSError as e:
-            constants.LOG.error(f"Could not start the server: {e}")
+            constants.LOG.warning(f"Could not start the server: {e}")
             return
         
         while True:
