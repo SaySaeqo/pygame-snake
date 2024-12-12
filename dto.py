@@ -5,6 +5,7 @@ from gameobjects import *
 import utils
 import pygameutils
 import toolz
+import constants
 
 @dataclass
 class Control:
@@ -51,7 +52,7 @@ class Config:
                             self.controls[player].right = pygame.key.key_code(parts[4])
                     if line.startswith("resolution"):
                         parts = line.split()
-                        pygameutils.create_window("Snake", int(parts[1]), int(parts[2]))
+                        pygameutils.create_window(constants.WINDOW_TITLE, int(parts[1]), int(parts[2]))
                     if line.startswith("last_connected_ip"):
                         parts = line.split()
                         self.last_connected_ip = parts[1]

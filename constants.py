@@ -52,3 +52,5 @@ LOG = logging.getLogger("snake")
 DEFAULT_PORT = 52413
 
 TEXT_LINES_PER_SCREEN = 18
+
+WINDOW_TITLE = "Snake v1.0+"
