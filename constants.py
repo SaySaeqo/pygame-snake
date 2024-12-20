@@ -1,5 +1,6 @@
 import logging
 import utils
+import enum
 
 class Color:
     black = (0, 0, 0)
@@ -54,3 +55,15 @@ DEFAULT_PORT = 52413
 TEXT_LINES_PER_SCREEN = 18
 
 WINDOW_TITLE = "Snake v1.0+"
+
+class Powerup(enum.Enum):
+    NONE = Color.green
+    WEIRD_WALKING = Color.magenta
+    WALL_WALKING = Color.cyan
+    CRUSHING = Color.gold
+
+POWERUP_TIMES = {
+    Powerup.WALL_WALKING: 5.0,
+    Powerup.WEIRD_WALKING: 10.0,
+    Powerup.CRUSHING: 10.0
+}

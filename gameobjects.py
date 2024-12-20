@@ -1,13 +1,13 @@
 import random
 import pygame
-from constants import Color
+import constants
 from decisionfunctions import Direction
 import pygameutils
 import math
 
 class Circle(pygame.Vector2):
 
-    def __init__(self, x, y, radius, color=Color.default, outline_width=0):
+    def __init__(self, x, y, radius, color=constants.Color.default, outline_width=0):
         super().__init__(x, y)
         self.r = radius
         self.outline_width = outline_width
@@ -51,67 +51,70 @@ class Circle(pygame.Vector2):
 
 
 class Fruit(Circle):
-    def __init__(self, x, y, radius, gives_wall_walking=False, gives_weird_walking=False):
-        self.gives_wall_walking = gives_wall_walking
-        self.gives_weird_walking = gives_weird_walking
-        super().__init__(x, y, radius, self.calculate_color())
-
-    def calculate_color(self):
-        if self.gives_wall_walking and self.gives_weird_walking:
-            return Color.gold
-        elif self.gives_wall_walking:
-            return Color.cyan
-        elif self.gives_weird_walking:
-            return Color.magenta
-        else:
-            return Color.green
+    def __init__(self, x, y, radius, powerup = constants.Powerup.NONE):
+        self.powerup = powerup
+        super().__init__(x, y, radius, powerup.value)
 
     def respawn(self):
         self.x = random.random() * pygame.display.get_surface().get_rect().width
         self.y = random.random() * pygame.display.get_surface().get_rect().height
         rnd = random.random()
         if rnd < 0.1:
-            self.gives_wall_walking = True
-            self.gives_weird_walking = False
+            self.powerup = constants.Powerup.WALL_WALKING
         elif rnd < 0.2:
-            self.gives_weird_walking = True
-            if self.gives_wall_walking:
+            if self.powerup == constants.Powerup.WALL_WALKING:
+                self.powerup = constants.Powerup.CRUSHING
                 pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
+            else:
+                self.powerup = constants.Powerup.WEIRD_WALKING
         else:
-            self.gives_wall_walking = False
-            self.gives_weird_walking = False
-        self.color = self.calculate_color()
+            self.powerup = constants.Powerup.NONE
+        self.color = self.powerup.value
         self.surface = pygame.Surface((self.r * 2, self.r * 2), flags=pygame.SRCALPHA)
         pygame.draw.circle(self.surface, self.color, (self.r, self.r), self.r, self.outline_width)
 
     def to_json(self):
         return super().to_json() | {
-            "gives_wall_walking": self.gives_wall_walking,
-            "gives_weird_walking": self.gives_weird_walking
+            "powerup": self.powerup.name
         }
     
     @classmethod
     def from_json(cls, json):
-        return cls(json["x"], json["y"], json["r"], json["gives_wall_walking"], json["gives_weird_walking"])
+        return cls(json["x"], json["y"], json["r"], constants.Powerup[json["powerup"]])
                     
 
 class Wall(Circle):
-    def __init__(self, x, y, radius, color=Color.blue, outline_width=0):
+    def __init__(self, x, y, radius, color=constants.Color.blue, outline_width=0):
         super().__init__(x, y, radius, color, outline_width)
         
+class Tail(Circle):
+    def __init__(self, x, y, radius, direction, color=constants.Color.default, outline_width=0):
+        super().__init__(x, y, radius, color, outline_width)
+        self.direction: pygame.Vector2 = direction
+
+    def to_json(self):
+        return super().to_json() | {
+            "direction": {
+                "x": self.direction.x,
+                "y": self.direction.y
+            },
+        }
+    
+    @classmethod
+    def from_json(cls, json, color, outline_width):
+        return cls(json["x"], json["y"], json["r"], pygame.Vector2(json["direction"]["x"], json["direction"]["y"]), color, outline_width)
+    
 class Snake(Circle):
-    def __init__(self, x, y, radius, color=Color.white, outline_width=0):
+    def __init__(self, x, y, radius, color=constants.Color.white, outline_width=0):
         super().__init__(x, y, radius, color, outline_width)
         self.decision = Direction.FORWARD
-        self.tail: list[Circle] = []
+        self.tail: list[Tail] = []
         self.direction = pygame.Vector2(random.random(), random.random()).normalize()
         self.rotation_power = 5  # distance sin size of snake width in witch snake successfully turns back
         self.alive = True
-        self.timer = 0.0
-        self.timer_max = 5.0
-        self.timer_color = Color.default
+        self.powerups = {}
 
-    def move(self, distance, should_walk_weird=False):
+    def move(self, distance):
         # change direction if key was pressed
         PI = 3.14
         decision = self.decision
@@ -139,7 +142,7 @@ class Snake(Circle):
                 # Find the closest point to the target point
                 closest = min(points, key=lambda p: t.distance_to(p))
 
-                if should_walk_weird:
+                if constants.Powerup.WEIRD_WALKING in self.powerups or constants.Powerup.CRUSHING in self.powerups:
                     t.x += self.direction.x * distance
                     t.y += self.direction.y * distance
                 else:
@@ -152,52 +155,45 @@ class Snake(Circle):
 
     def consume(self, fruit):
         last = self.tail[-1] if self.tail else self
-        new_tail = Circle(last.x, last.y, self.r, self.color, outline_width=int(self.r / 2))
-        new_tail.direction = last.direction
+        new_tail = Tail(last.x, last.y, self.r, last.direction, self.color, outline_width=int(self.r / 2))
         self.tail.append(new_tail)
-        # time = 0
-        # if fruit.gives_wall_walking:
-        #     time = 5
-        # elif fruit.gives_weird_walking:
-        #     time = 5
-        # elif fruit.gives_wall_walking and fruit.gives_weird_walking:
-        #     time = 5
-        # if time:
-        #     self.set_timer(time, fruit.color)
-        
+        if fruit.powerup in [constants.Powerup.WEIRD_WALKING, constants.Powerup.CRUSHING]:
+            if fruit.powerup in self.powerups:
+                self.powerups[fruit.powerup] += constants.POWERUP_TIMES[fruit.powerup]
+            else:
+                self.powerups[fruit.powerup] = constants.POWERUP_TIMES[fruit.powerup]
         fruit.respawn()
         
 
     def draw(self):
-        if self.timer > 0:
+        if self.powerups:
             self.draw_with_timer()
             return
         super().draw()
         for t in self.tail:
             t.draw()
 
-    def set_timer(self, time, color):
-        self.timer = time
-        self.timer_max = time
-        self.timer_color = color
-
     def update_timer(self, delta):
-        self.timer = max(0, self.timer - delta)
+        for powerup in list(self.powerups):
+            self.powerups[powerup] -= delta
+            if self.powerups[powerup] < 0:
+                del self.powerups[powerup]
 
     def draw_with_timer(self):
-        num_of_segments = len(self.tail) + 1
-        segments_to_color = (num_of_segments * self.timer) / self.timer_max
-        fully_colored = int(math.floor(segments_to_color))
-        rest = segments_to_color - fully_colored
-        segments = [self] + self.tail
-        for segment, percentage in zip(segments, fully_colored * [1] + [rest] + (num_of_segments - fully_colored - 1) * [0]):
-            current_sur = segment.surface
-            segment.surface = pygameutils.paint_surface(current_sur, self.timer_color, percentage, -segment.direction)
-            if segment is self:
-                super().draw()
-            else:
-                segment.draw()
-            segment.surface = current_sur
+        for powerup, time in sorted(list(self.powerups.items()), key=lambda x: x[1], reverse=True):
+            num_of_segments = len(self.tail) + 1
+            segments_to_color = time
+            fully_colored = int(math.floor(segments_to_color))
+            rest = segments_to_color - fully_colored
+            segments = [self] + self.tail
+            for segment, percentage in zip(segments, fully_colored * [1] + [rest] + (num_of_segments - fully_colored - 1) * [0]):
+                current_sur = segment.surface
+                segment.surface = pygameutils.paint_surface(current_sur, powerup.value, percentage, -segment.direction)
+                if segment is self:
+                    super().draw()
+                else:
+                    segment.draw()
+                segment.surface = current_sur
 
 
     def draw_direction(self):
@@ -243,7 +239,8 @@ class Snake(Circle):
             "rotation_power": self.rotation_power,
             "alive": self.alive,
             "tail": [t.to_json() for t in self.tail],
-            "color": self.color
+            "color": self.color,
+            "powerups": {p.name: t for p,t in self.powerups.items()}
         }
      
     @classmethod
@@ -254,6 +251,8 @@ class Snake(Circle):
         snake.rotation_power = json["rotation_power"]
         snake.alive = json["alive"]
         for t in json["tail"]:
-            tail = Circle(t["x"], t["y"], t["r"], snake.color, outline_width=int(snake.r / 2))
+            tail = Tail.from_json(t, snake.color, outline_width=int(snake.r / 2))
             snake.tail.append(tail)
+        for p, t in json["powerups"].items():
+            snake.powerups[constants.Powerup[p]] = t
         return snake

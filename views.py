@@ -58,17 +58,16 @@ class GameView(pygameview.PyGameView):
         draw_board(self.state)
 
         for idx, player in st.enumarate_alive_players():
-            player.move(constants.Game().diameter * st.current_speed * delta, should_walk_weird=(st.weird_walking_event_timer > 0))
+            player.move(constants.Game().diameter * st.current_speed * delta)
             # region COLLISION_CHECK
             # with fruits
             for fruit in st.fruits:
                 if fruit.is_colliding_with(player):
-                    if fruit.gives_wall_walking:
-                        st.wall_walking_event_timer += 5
-                    if fruit.gives_weird_walking:
-                        st.weird_walking_event_timer += 5
-                    if fruit.gives_wall_walking and fruit.gives_weird_walking:
-                        st.destroying_event_timer += 5
+                    if fruit.powerup == constants.Powerup.WALL_WALKING:
+                        st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.WALL_WALKING]
+                    if fruit.powerup == constants.Powerup.CRUSHING:
+                        st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
+                        st.destroying_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
                     player.consume(fruit)
                     st.scores[idx] += 1
             # with walls
@@ -103,7 +102,6 @@ class GameView(pygameview.PyGameView):
         st.time_passed += delta
         st.fruit_event_timer += delta
         st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
-        st.weird_walking_event_timer = max(0, st.weird_walking_event_timer - delta)
         st.destroying_event_timer = max(0, st.destroying_event_timer - delta)
         if st.fruit_event_timer > 5:
             st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game().diameter / 2))
