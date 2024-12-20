@@ -151,16 +151,16 @@ def close_view_with_result(res):
 async def _update_async(delta):
     if current_view() is None:
         return
-    before = time.perf_counter()
+    # before = time.perf_counter()
     current_view().update(delta)
-    before = log_how_much_time_of_frame(before, "Update")
+    # before = log_how_much_time_of_frame(before, "Update")
     pygame.display.update()
-    before = log_how_much_time_of_frame(before, "Update display")
+    # before = log_how_much_time_of_frame(before, "Update display")
     for event in pygame.event.get():
         current_view().handle_event(event)
-    before = log_how_much_time_of_frame(before, "Handle event")
+    # before = log_how_much_time_of_frame(before, "Handle event")
     await current_view().do_async()
-    before = log_how_much_time_of_frame(before, "Do async")
+    # before = log_how_much_time_of_frame(before, "Do async")
 
     global _current_view, _closing
     if _closing:
@@ -193,7 +193,7 @@ async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing
         while current_view():
             delta = await clock.tick(fps)
             await _update_async(delta)
-        log_averages(view)
+        # log_avepyrages(view)
         return pop_result()
     finally:
         global _current_view
