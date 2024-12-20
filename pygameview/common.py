@@ -48,7 +48,7 @@ class InputView(core.PyGameView):
     - Backspace -> deletes last char
     """
 
-    MAX_INPUT_LENGTH = 24
+    MAX_INPUT_LENGTH = 64
     
     def __init__(self, title: str, value: str, character_filter=lambda c: True):
         self.title = title

@@ -14,6 +14,7 @@ class HostNetworkListener(net.NetworkListener):
         self.game_state = game_state
 
     def action_join(self, names):
+        constants.LOG.info(f"Player joined: {names}")
         new_players = [[name, self.address] for name in names]
         self.players.extend(new_players)
 
@@ -94,7 +95,9 @@ async def run_solo_host():
             return
         
         while True:
+            constants.LOG.info("Waiting for players")
             await solo_host_lobby(players)
+            constants.LOG.info("Starting the game")
             await solo_host_game(game_state)
             players.clear()
             net.send("score", game_state.to_json())
