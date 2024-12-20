@@ -90,7 +90,6 @@ class GameState:
     fruit_event_timer: float = 0
     wall_event_timer: float = 0
     wall_walking_event_timer: float = 0
-    destroying_event_timer: float = 0
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
 

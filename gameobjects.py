@@ -67,6 +67,8 @@ class Fruit(Circle):
                 pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
             else:
                 self.powerup = constants.Powerup.WEIRD_WALKING
+        elif rnd < 0.25:
+            self.powerup = constants.Powerup.GHOSTING
         else:
             self.powerup = constants.Powerup.NONE
         self.color = self.powerup.value
@@ -157,7 +159,7 @@ class Snake(Circle):
         last = self.tail[-1] if self.tail else self
         new_tail = Tail(last.x, last.y, self.r, last.direction, self.color, outline_width=int(self.r / 2))
         self.tail.append(new_tail)
-        if fruit.powerup in [constants.Powerup.WEIRD_WALKING, constants.Powerup.CRUSHING]:
+        if fruit.powerup not in [constants.Powerup.NONE, constants.Powerup.WALL_WALKING]:
             if fruit.powerup in self.powerups:
                 self.powerups[fruit.powerup] += constants.POWERUP_TIMES[fruit.powerup]
             else:

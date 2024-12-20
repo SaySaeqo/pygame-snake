@@ -67,21 +67,20 @@ class GameView(pygameview.PyGameView):
                         st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.WALL_WALKING]
                     if fruit.powerup == constants.Powerup.CRUSHING:
                         st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
-                        st.destroying_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
                     player.consume(fruit)
                     st.scores[idx] += 1
             # with walls
             for wall in st.walls:
                 if wall.is_colliding_with(player):
-                    if st.destroying_event_timer > 0:
+                    if constants.Powerup.CRUSHING in player.powerups:
                         pygame.mixer.Sound("sound/crush.mp3").play(maxtime=1000)
                         st.walls.remove(wall)
-                    else:
+                    elif constants.Powerup.GHOSTING not in player.powerups:
                         player.died()
                         constants.LOG.info(f"Player {idx+1} clashed with wall")
             # with borders
             if not pygame.display.get_surface().get_rect().contains(player.get_rect()):
-                if (st.wall_walking_event_timer == 0):
+                if st.wall_walking_event_timer == 0 and constants.Powerup.GHOSTING not in player.powerups:
                     player.died()
                     constants.LOG.info(f"Player {idx+1} got out of border")
                 else:
@@ -89,7 +88,7 @@ class GameView(pygameview.PyGameView):
                     player.y = (player.y + pygame.display.get_surface().get_rect().height) % pygame.display.get_surface().get_rect().height
             # with tail
             for pl in st.alive_players():
-                if player.is_colliding_with(pl):
+                if player.is_colliding_with(pl) and not (constants.Powerup.GHOSTING in player.powerups or constants.Powerup.GHOSTING in pl.powerups):
                     player.died()
                     constants.LOG.info(f"Player {idx+1} clashed with sb's tail")
             # endregion
@@ -102,7 +101,6 @@ class GameView(pygameview.PyGameView):
         st.time_passed += delta
         st.fruit_event_timer += delta
         st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
-        st.destroying_event_timer = max(0, st.destroying_event_timer - delta)
         if st.fruit_event_timer > 5:
             st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game().diameter / 2))
             st.fruit_event_timer = 0
