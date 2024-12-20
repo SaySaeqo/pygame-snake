@@ -61,5 +61,25 @@ async def run_host():
             game_state.reset()
 
 
+async def run_solo_host():
+    server_address = ("0.0.0.0", constants.DEFAULT_PORT)
+    host = f"{utils.get_my_ip()}:{server_address[1]}"
+    players = []
+    game_state = dto.GameState()
 
-
+    with net.ContextManager():
+        try:
+            await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+        except OSError as e:
+            constants.LOG.warning(f"Could not start the server: {e}")
+            return
+        
+        while True:
+            should_start = await LobbyView(host, players)
+            if not should_start: return
+            game_state.init(len(players))
+            net.send("start", pygame.display.get_window_size())
+            await ReadyGoView(game_state,GameView(game_state))
+            players.clear()
+            net.send("score", game_state.to_json())
+            game_state.reset()
