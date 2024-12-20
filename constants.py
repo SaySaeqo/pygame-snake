@@ -47,6 +47,7 @@ class Game:
     speed  = 4
     time_limit = 60
     rotation_power = 4
+    screen_rect = None
 
 LOG = logging.getLogger("snake")
 

@@ -103,6 +103,9 @@ class GameState:
         self.current_speed= Game().speed
         self.scores=[0] * number_of_players
 
+    def get_init(self):
+        return len(self.players) > 0
+
     def alive_players(self):
         return filter(lambda x: x.alive, self.players)
     

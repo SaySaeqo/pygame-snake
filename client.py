@@ -38,6 +38,8 @@ class ClientLobbyView(pygameview.PyGameView):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygameview.close_view()
+            if event.key == pygame.K_RETURN:
+                net.send("start", pygame.display.get_window_size())
         super().handle_event(event)
 
 

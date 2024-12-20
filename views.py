@@ -177,3 +177,75 @@ class LobbyView(pygameview.PyGameView):
 
     async def do_async(self):
         net.send_udp("lobby", self.players)
+
+async def solo_host_game(game_state: dto.GameState):
+    clock = pygameview.AsyncClock()
+
+    # ready go
+    time_passed = 0
+
+    while time_passed <= 1:
+        delta = clock.tick(pygameview.DEFAULT_FPS)
+        time_passed += delta
+        net.send_udp("game", game_state.to_json())
+
+    # game loop
+    running = True
+    st = game_state
+    screen_rect = constants.Game().screen_rect
+    while running:
+        for idx, player in st.enumarate_alive_players():
+            player.move(constants.Game().diameter * st.current_speed * delta)
+            # region COLLISION_CHECK
+            # with fruits
+            for fruit in st.fruits:
+                if fruit.is_colliding_with(player):
+                    if fruit.powerup == constants.Powerup.WALL_WALKING:
+                        st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.WALL_WALKING]
+                    if fruit.powerup == constants.Powerup.CRUSHING:
+                        st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
+                    player.consume(fruit)
+                    st.scores[idx] += 1
+            # with walls
+            for wall in st.walls:
+                if wall.is_colliding_with(player):
+                    if constants.Powerup.CRUSHING in player.powerups:
+                        st.walls.remove(wall)
+                    elif constants.Powerup.GHOSTING not in player.powerups:
+                        player.died()
+            # with borders
+            if not screen_rect.contains(player.get_rect()):
+                if st.wall_walking_event_timer == 0 and constants.Powerup.GHOSTING not in player.powerups:
+                    player.died()
+                else:
+                    player.x = (player.x + screen_rect.width) % screen_rect.width
+                    player.y = (player.y + screen_rect.height) % screen_rect.height
+            # with tail
+            for pl in st.alive_players():
+                if player.is_colliding_with(pl) and not (constants.Powerup.GHOSTING in player.powerups or constants.Powerup.GHOSTING in pl.powerups):
+                    player.died()
+            # endregion
+        if st.all_players_dead():
+            running = False
+
+        # update time counter
+        for player in st.alive_players():
+            player.update_timer(delta)
+        st.time_passed += delta
+        st.fruit_event_timer += delta
+        st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
+        if st.fruit_event_timer > 5:
+            st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game().diameter / 2))
+            st.fruit_event_timer = 0
+        if constants.Game().time_limit and st.time_passed > constants.Game().time_limit:
+            st.wall_event_timer += delta
+            if st.wall_event_timer > (constants.Game().time_limit**2) / (st.time_passed**2):
+                st.walls += [gameobjects.Wall.at_random_position(constants.Game().diameter)]
+                st.wall_event_timer = 0
+
+        # something to make it more fun!
+        st.current_speed = constants.Game().speed + 2 * int(1 + st.time_passed / 10)
+        for player in st.alive_players():
+            player.rotation_power = constants.Game().rotation_power + int(st.time_passed / 10)
+
+        net.send_udp("game", game_state.to_json())

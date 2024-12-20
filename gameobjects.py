@@ -26,8 +26,12 @@ class Circle(pygame.Vector2):
 
     @classmethod
     def at_random_position(cls, radius, color=None):
-        x = random.random() * pygame.display.get_surface().get_rect().width
-        y = random.random() * pygame.display.get_surface().get_rect().height
+        if pygame.display.get_surface():
+            rect = pygame.display.get_surface().get_rect()
+        else:
+            rect = constants.Game().screen_rect
+        x = random.random() * rect.width
+        y = random.random() * rect.height
         return cls(x, y, radius) if not color else cls(x, y, radius, color)
 
     def get_rect(self):
@@ -56,15 +60,20 @@ class Fruit(Circle):
         super().__init__(x, y, radius, powerup.value)
 
     def respawn(self):
-        self.x = random.random() * pygame.display.get_surface().get_rect().width
-        self.y = random.random() * pygame.display.get_surface().get_rect().height
+        if pygame.display.get_surface():
+            rect = pygame.display.get_surface().get_rect()
+        else:
+            rect = constants.Game().screen_rect
+        self.x = random.random() * rect.width
+        self.y = random.random() * rect.height
         rnd = random.random()
         if rnd < 0.1:
             self.powerup = constants.Powerup.WALL_WALKING
         elif rnd < 0.2:
             if self.powerup == constants.Powerup.WALL_WALKING:
                 self.powerup = constants.Powerup.CRUSHING
-                pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
+                if pygame.display.get_surface():
+                    pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
             else:
                 self.powerup = constants.Powerup.WEIRD_WALKING
         elif rnd < 0.25:
@@ -133,7 +142,11 @@ class Snake(Circle):
             if not t.is_colliding_with(prev):
 
                 x, y = prev
-                width, height = pygame.display.get_surface().get_rect().size
+                if pygame.display.get_surface():
+                    screen_rect = pygame.display.get_surface().get_rect()
+                else:
+                    screen_rect = constants.Game().screen_rect
+                width, height = screen_rect.size
 
                 # Create a list of translations
                 translations = [(0, 0), (-width, 0), (width, 0), (0, -height), (0, height), (-width, -height), (-width, height), (width, -height), (width, height)]
@@ -151,8 +164,8 @@ class Snake(Circle):
                     t.x, t.y = t.move_towards(closest, distance)
                 t.direction = (closest - t).normalize() if closest != t else prev.direction
 
-                t.x = (t.x + pygame.display.get_surface().get_rect().width) % pygame.display.get_surface().get_rect().width
-                t.y = (t.y + pygame.display.get_surface().get_rect().height) % pygame.display.get_surface().get_rect().height
+                t.x = (t.x + screen_rect.width) % screen_rect.get_rect().width
+                t.y = (t.y + screen_rect.height) % screen_rect.get_rect().height
 
 
     def consume(self, fruit):
@@ -227,8 +240,12 @@ class Snake(Circle):
     
     @classmethod
     def at_random_position(cls, radius, color=None):
-        x = random.random() * pygame.display.get_surface().get_rect().width * 0.6 + pygame.display.get_surface().get_rect().width * 0.2
-        y = random.random() * pygame.display.get_surface().get_rect().height * 0.6 + pygame.display.get_surface().get_rect().height * 0.2
+        if pygame.display.get_surface():
+            screen_rect = pygame.display.get_surface().get_rect()
+        else:
+            screen_rect = constants.Game().screen_rect
+        x = random.random() * screen_rect.width * 0.6 + screen_rect.width * 0.2
+        y = random.random() * screen_rect.height * 0.6 + screen_rect.height * 0.2
         return cls(x, y, radius) if not color else cls(x, y, radius, color)
     
     def to_json(self):
