@@ -68,7 +68,7 @@ class SoloHostNetworkListener(HostNetworkListener):
     def action_start(self, resolution):
         if self.players and self.address == self.players[0][1] and not self.game_state.get_init():
             constants.Game().screen_rect = pygame.Rect((0, 0), resolution)
-            self.game_state.init(self.players)
+            self.game_state.init(len(self.players))
             net.send("start", resolution)
             global lobby_running
             lobby_running = False

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from dto import Config, GameState
 import constants
 import pygameutils
+import socket
 
 @singleton
 @dataclass
@@ -21,8 +22,10 @@ class ClientLobbyView(pygameview.PyGameView):
 
     def __init__(self, host_address):
         self.host_address = host_address
+        self.timer = 0
 
     def update(self, delta):
+        self.timer += delta
         players_phrase = ""
         for player in ClientNetworkData().players:
             players_phrase += f"{player})\n"
@@ -38,7 +41,7 @@ class ClientLobbyView(pygameview.PyGameView):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygameview.close_view()
-            if event.key == pygame.K_RETURN:
+            if event.key == pygame.K_RETURN and self.timer > 1:
                 net.send("start", pygame.display.get_window_size())
         super().handle_event(event)
 
@@ -90,6 +93,7 @@ class ClientNetworkListener(net.NetworkListener):
 
 
 async def run_client(host_address: tuple[str, int]):
+    host_address = socket.gethostbyname(host_address[0]), host_address[1]
     with net.ContextManager():
         try:
             await first_completed(

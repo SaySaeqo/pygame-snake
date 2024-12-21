@@ -164,6 +164,7 @@ def is_connected(address: tuple[str, int]) -> bool:
 
 def close():
     """ Resets global variables and closes all connections. """
+    LOG.debug("Closing connections")
     global server
     if server:
         server.close()
