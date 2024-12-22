@@ -93,7 +93,6 @@ class ClientNetworkListener(net.NetworkListener):
 
 
 async def run_client(host_address: tuple[str, int]):
-    host_address = socket.gethostbyname(host_address[0]), host_address[1]
     with net.ContextManager():
         try:
             await first_completed(

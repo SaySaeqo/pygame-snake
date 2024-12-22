@@ -3,6 +3,7 @@ import json
 import logging
 import toolz
 import typing
+import socket
 
 LOG = logging.getLogger(__package__)
 END_SEQ = b"\0---\0"
@@ -158,6 +159,7 @@ def send_udp(action: str, data = None, to: tuple[str, int] = None):
 
 def is_connected(address: tuple[str, int]) -> bool:
     try:
+        address = socket.gethostbyname(address[0]), address[1]
         return not tcp_connections[address][0].is_closing()
     except KeyError:
         return False

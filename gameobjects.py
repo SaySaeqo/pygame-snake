@@ -164,8 +164,8 @@ class Snake(Circle):
                     t.x, t.y = t.move_towards(closest, distance)
                 t.direction = (closest - t).normalize() if closest != t else prev.direction
 
-                t.x = (t.x + screen_rect.width) % screen_rect.get_rect().width
-                t.y = (t.y + screen_rect.height) % screen_rect.get_rect().height
+                t.x = (t.x + screen_rect.width) % screen_rect.width
+                t.y = (t.y + screen_rect.height) % screen_rect.height
 
 
     def consume(self, fruit):
