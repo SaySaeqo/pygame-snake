@@ -88,6 +88,7 @@ class _GeneralProtocol(asyncio.Protocol):
         # store connection in global variable
         global tcp_connections
         tcp_connections[self.transport_address] = (transport, self)
+        LOG.debug(f"Connection made with {self.transport_address}")
 
         # set network listener for UDP connection
         global udp_connection
@@ -106,6 +107,7 @@ class _GeneralProtocol(asyncio.Protocol):
                 LOG.warning(f"Connection lost but not closed: {self.transport_address}")
                 tcp_connections[self.transport_address][0].close()
             del tcp_connections[self.transport_address]
+            LOG.debug(f"Connection lost with {self.transport_address}")
         except KeyError:
             pass
 
@@ -126,9 +128,10 @@ class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
 async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
     global udp_connection
-    udp_connection = await loop.create_datagram_endpoint(_GeneralDatagramProtocol, remote_addr=address)
+    udp_connection = await loop.create_datagram_endpoint(_GeneralDatagramProtocol, local_addr=("0.0.0.0", 0))
     local_addr = udp_connection[0].get_extra_info("sockname")[:2]
     t, p = await loop.create_connection(lambda : _GeneralProtocol(network_listener_factory), *address, local_addr=local_addr)
+    LOG.debug(f"Connection listen on address {local_addr}")
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
     loop = asyncio.get_running_loop()
@@ -151,7 +154,6 @@ def send(action: str, data = None, to: tuple[str, int] = None):
 def send_udp(action: str, data = None, to: tuple[str, int] = None):
     if not udp_connection:
         return
-    LOG.debug(f"Sending UDP action '{action}' to {to}")
     if to:
         udp_connection[0].sendto(_get_sendready_data(action, data), to)
     else:
