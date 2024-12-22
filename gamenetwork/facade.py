@@ -137,6 +137,7 @@ async def start_server(address: tuple[str, int], network_listener_factory = lamb
     server = await loop.create_server(lambda : _GeneralProtocol(network_listener_factory), *address)
 
 def send(action: str, data = None, to: tuple[str, int] = None):
+    LOG.debug(f"Sending TCP action '{action}' to {to}")
     if to:
         try:
             tcp_connections[to][0].write(_get_sendready_data(action, data))
@@ -150,6 +151,7 @@ def send(action: str, data = None, to: tuple[str, int] = None):
 def send_udp(action: str, data = None, to: tuple[str, int] = None):
     if not udp_connection:
         return
+    LOG.debug(f"Sending UDP action '{action}' to {to}")
     if to:
         udp_connection[0].sendto(_get_sendready_data(action, data), to)
     else:
