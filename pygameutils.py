@@ -18,7 +18,7 @@ def next_screen_resolution():
         return
 
     current_resolution = pygame.display.get_window_size()
-    if current_resolution == get_screen_size():
+    if pygame.display.is_fullscreen():
         next_resolution = RESOLUTIONS[0]
     else:
         next_resolution = RESOLUTIONS[RESOLUTIONS.index(current_resolution)+1]

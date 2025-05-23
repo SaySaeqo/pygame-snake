@@ -51,8 +51,13 @@ class Config:
                             self.controls[player].left = pygame.key.key_code(parts[3])
                             self.controls[player].right = pygame.key.key_code(parts[4])
                     if line.startswith("resolution"):
-                        parts = line.split()
-                        pygameutils.create_window(constants.WINDOW_TITLE, int(parts[1]), int(parts[2]))
+                        key, w, h = line.split()
+                        w = int(w)
+                        h = int(h)
+                        full_screen = pygameutils.get_screen_size()
+                        if full_screen[0] < w or full_screen[1] < h:
+                            w, h = full_screen
+                        pygameutils.create_window(constants.WINDOW_TITLE, w, h)
                     if line.startswith("last_connected_ip"):
                         parts = line.split()
                         self.last_connected_ip = parts[1]
