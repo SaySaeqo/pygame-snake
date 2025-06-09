@@ -37,9 +37,9 @@ def update_udb_port(ip, old_port, new_port: int):
 def remove_tcp_connection(address: _Address):
     global tcp_connections
     try:
-        if not tcp_connections[address][0].is_closing():
+        if not tcp_connections[address].transport.is_closing():
             LOG.warning(f"Connection lost but not closed: {address}")
-            tcp_connections[address][0].close()
+            tcp_connections[address].transport.close()
         del tcp_connections[address]
         LOG.debug(f"Connection lost with {address}")
     except KeyError:
@@ -114,9 +114,10 @@ def _find_action_data(data: bytes, action: str) -> typing.Any:
 
 class _GeneralProtocol(asyncio.Protocol):
     
-    def __init__(self, network_listener_factory: typing.Callable[[tuple[str, int]], NetworkListener]):
+    def __init__(self, network_listener_factory: typing.Callable[[tuple[str, int]], NetworkListener], udp_port: int):
         self.network_listener_factory = network_listener_factory
         self.network_listener = None
+        self.udp_port_at_start = udp_port
 
     def connection_made(self, transport: asyncio.Transport):
         # retrieve the peer address
@@ -128,7 +129,8 @@ class _GeneralProtocol(asyncio.Protocol):
 
         # store connection in global variable
         global tcp_connections
-        tcp_connections[self.transport_address] = Connection(transport, self, self.transport_address[1])
+        udp_port = self.udp_port_at_start if self.udp_port_at_start else self.transport_address[1]
+        tcp_connections[self.transport_address] = Connection(transport, self, udp_port)
         LOG.debug(f"Connection made with {self.transport_address}")
 
         # set network listener for UDP connection
@@ -179,13 +181,13 @@ class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
         if exc:
             raise Exception("UDP connection lost due to error: {}".format(exc))
 
-async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):
+async def connect_to_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address), udp_port=None):
     loop = asyncio.get_running_loop()
     global udp_connection
     t, p = await loop.create_datagram_endpoint(_GeneralDatagramProtocol, local_addr=("0.0.0.0", 0))
     udp_connection = UDPConnection(t, p)
     local_addr = t.get_extra_info("sockname")[:2]
-    t, p = await loop.create_connection(lambda : _GeneralProtocol(network_listener_factory), *address, local_addr=local_addr)
+    t, p = await loop.create_connection(lambda : _GeneralProtocol(network_listener_factory, udp_port), *address, local_addr=local_addr)
     LOG.debug(f"Connection listen on address {local_addr}")
 
 async def start_server(address: tuple[str, int], network_listener_factory = lambda address: NetworkListener(address)):

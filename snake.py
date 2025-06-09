@@ -7,7 +7,7 @@ import pygameutils
 import constants
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     # logging.basicConfig(level=logging.INFO, filename="snake.log")
     # logging.basicConfig(level=logging.INFO, filename="performace.log", filemode="w")
     dto.Config().load_from_file()

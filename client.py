@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from dto import Config, GameState
 import constants
 import pygameutils
-import socket
+import playfab
+import logging
+import traceback
 
 @singleton
 @dataclass
@@ -91,19 +93,22 @@ class ClientNetworkListener(net.NetworkListener):
         constants.LOG.info("Disconnected from the server")
         pygameview.close_view()
 
+    def action_print(self, msg):
+        constants.LOG.info(msg)
 
-async def run_client(host_address: tuple[str, int]):
+
+async def run_client(host_address: tuple[str, int], udp_port=None):
     with net.ContextManager():
         try:
             await first_completed(
-                net.connect_to_server(host_address, lambda address: ClientNetworkListener(address)),
+                net.connect_to_server(host_address, lambda address: ClientNetworkListener(address), udp_port=udp_port),
                 pygameview.run_async(pygameview.common.WaitingView("Connecting to server"))
                 )
         except OSError as e:
             constants.LOG.warning("Could not connect to the server: {}".format(e))
             return
         finally:
-            await pygameview.wait_closed()
+            pygameview.close_view()
         
         if not net.is_connected(host_address):
             constants.LOG.info("Connection aborted")
@@ -120,5 +125,66 @@ async def run_client(host_address: tuple[str, int]):
             await ClientLobbyView(host_address)
     
 
+playfab_result = None
+
+class PlayfabError(Exception): ...
+
+def get_playfab_result(result, error):
+    if error:
+        raise PlayfabError(error)
+    else:
+        global playfab_result
+        playfab_result = result
+
+def raise_error(e):
+    raise e
+
+async def run_on_playfab():
+
+    task = asyncio.create_task(pygameview.run_async(pygameview.common.WaitingView("Connecting to PlayFab")))
+    await asyncio.sleep(0)
+    global playfab_result
+    try:
+        playfab.PlayFabSettings.TitleId = "EE89E"
+        playfab.PlayFabSettings.GlobalExceptionLogger = raise_error
+        playfab.PlayFabClientAPI.LoginWithCustomID({
+                "CreateAccount": True,
+                "CustomId": "test",
+            }, get_playfab_result)
+        await asyncio.sleep(0)
+        playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
+                "BuildId": "e87633b5-03c0-4c2d-9ac6-f48c8967bd1e",
+                "PreferredRegions": ["NorthEurope"],
+                "SessionId": "1531a801-9ec3-4d4f-af2f-6d1f3400f9a4",
+            }, get_playfab_result)
+        await asyncio.sleep(0)
+        ports = playfab_result["Ports"]
+        ipv4 = playfab_result["IPV4Address"]
+        tcp_port = None
+        udp_port = None
+        for port in playfab_result["Ports"]:
+            if port["Protocol"] == "TCP":
+                tcp_port = int(port["Num"])
+            else:
+                udp_port = int(port["Num"])
+        constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}")
+        
+        pygameview.close_view()
+        await run_client((ipv4, tcp_port), udp_port)
+        
+    except PlayfabError as e:
+        constants.LOG.error(f"Playfab error: {e}")
+    except playfab.PlayFabErrors.PlayFabException as e:
+        constants.LOG.error(f"Playfab exception {e}")
+    except Exception as e:
+        traceback.print_exc()
+        constants.LOG.error(f"Unexpected error: {e}")
+
+    pygameview.close_view()
+
     
 
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    pygameutils.create_window("Playfab test", (800, 600))
+    asyncio.run(run_on_playfab())

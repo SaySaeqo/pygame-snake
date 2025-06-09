@@ -186,6 +186,8 @@ future = loop.create_future()
 
 async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
     try:
+        if _closing:
+            await wait_closed()
         if current_view():
             raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
         set_view(view)

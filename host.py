@@ -4,6 +4,7 @@ from views import *
 import utils
 import dto
 import constants
+import logging
 
 
 class HostNetworkListener(net.NetworkListener):
@@ -31,6 +32,10 @@ class HostNetworkListener(net.NetworkListener):
         for i in range(len(self.players)):
             if self.players[i][1] == self.address:
                 del self.players[i]
+
+    def action_respond(self, msg):
+        net.send("print", f"Message '{msg}' have got sent back by TCP.")
+        net.send_udp("print", f"Message '{msg}' have got sent back by UDP.")
         
 
 async def run_host():
@@ -102,3 +107,7 @@ async def run_solo_host():
             players.clear()
             net.send("score", game_state.to_json())
             game_state.reset()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, filename="snake_host.log", filemode="w")
+    asyncio.run(run_solo_host())
