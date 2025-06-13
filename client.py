@@ -44,7 +44,8 @@ class ClientLobbyView(pygameview.PyGameView):
             if event.key == pygame.K_ESCAPE:
                 pygameview.close_view()
             if event.key == pygame.K_RETURN and self.timer > 1:
-                net.send("start", pygame.display.get_window_size())
+                # net.send("start", pygame.display.get_window_size())
+                net.send_udp("respond", "HAHA")
         super().handle_event(event)
 
 
@@ -97,11 +98,11 @@ class ClientNetworkListener(net.NetworkListener):
         constants.LOG.info(msg)
 
 
-async def run_client(host_address: tuple[str, int], udp_port=None):
+async def run_client(ip:str, tcp_port: int, udp_port: int):
     with net.ContextManager():
         try:
             await first_completed(
-                net.connect_to_server(host_address, lambda address: ClientNetworkListener(address), udp_port=udp_port),
+                net.connect_to_server(ip, tcp_port, udp_port, lambda address: ClientNetworkListener(address)),
                 pygameview.run_async(pygameview.common.WaitingView("Connecting to server"))
                 )
         except OSError as e:
@@ -114,7 +115,7 @@ async def run_client(host_address: tuple[str, int], udp_port=None):
             constants.LOG.info("Connection aborted")
             return
         
-        Config().last_connected_ip = host_address[0]
+        Config().last_connected_ip = f"{ip}:{tcp_port}" 
         Config().save_to_file()
 
         global should_relaunch
@@ -122,7 +123,7 @@ async def run_client(host_address: tuple[str, int], udp_port=None):
         while should_relaunch:
             should_relaunch = False
             net.send("join", Config().active_players_names)
-            await ClientLobbyView(host_address)
+            await ClientLobbyView(f"{ip}:{tcp_port}")
     
 
 playfab_result = None
@@ -152,25 +153,28 @@ async def run_on_playfab():
                 "CustomId": "test",
             }, get_playfab_result)
         await asyncio.sleep(0)
-        playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "e87633b5-03c0-4c2d-9ac6-f48c8967bd1e",
-                "PreferredRegions": ["NorthEurope"],
-                "SessionId": "1531a801-9ec3-4d4f-af2f-6d1f3400f9a4",
-            }, get_playfab_result)
+        # playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
+        #         "BuildId": "0eb55df1-2af8-47f7-ba4b-e4b4a4d96bda",
+        #         "PreferredRegions": ["NorthEurope"],
+        #         "SessionId": "1531a801-9ec3-4d4f-af2f-6d1f3400f9a5",
+        #     }, get_playfab_result)
         await asyncio.sleep(0)
-        ports = playfab_result["Ports"]
-        ipv4 = playfab_result["IPV4Address"]
-        tcp_port = None
-        udp_port = None
-        for port in playfab_result["Ports"]:
-            if port["Protocol"] == "TCP":
-                tcp_port = int(port["Num"])
-            else:
-                udp_port = int(port["Num"])
+        # ports = playfab_result["Ports"]
+        # ipv4 = playfab_result["IPV4Address"]
+        ipv4 = "20.166.14.209"
+        # tcp_port = None
+        # udp_port = None
+        tcp_port = 30000
+        udp_port = 30100
+        # for port in ports:
+        #     if port["Protocol"] == "TCP":
+        #         tcp_port = int(port["Num"])
+        #     else:
+        #         udp_port = int(port["Num"])
         constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}")
         
         pygameview.close_view()
-        await run_client((ipv4, tcp_port), udp_port)
+        await run_client(ipv4, tcp_port, udp_port)
         
     except PlayfabError as e:
         constants.LOG.error(f"Playfab error: {e}")

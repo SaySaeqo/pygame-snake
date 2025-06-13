@@ -16,12 +16,12 @@ class HostNetworkListener(net.NetworkListener):
 
     def action_join(self, names):
         constants.LOG.info(f"Player joined: {names}")
-        new_players = [[name, self.address] for name in names]
+        new_players = [[name, self._address] for name in names]
         self.players.extend(new_players)
 
     def action_control(self, data):
         try:
-            idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self.address)
+            idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self._address)
             player = self.game_state.players[idx]
             player.decision = data["direction"]
         except StopIteration:
@@ -30,7 +30,7 @@ class HostNetworkListener(net.NetworkListener):
     def disconnected(self):
         constants.LOG.info("Player disconnected")
         for i in range(len(self.players)):
-            if self.players[i][1] == self.address:
+            if self.players[i][1] == self._address:
                 del self.players[i]
 
     def action_respond(self, msg):
@@ -39,14 +39,13 @@ class HostNetworkListener(net.NetworkListener):
         
 
 async def run_host():
-    server_address = ("0.0.0.0", constants.DEFAULT_PORT)
-    host = f"{utils.get_my_ip()}:{server_address[1]}"
-    players = [[name, server_address] for name in dto.Config().active_players_names]
+    host = f"{utils.get_my_ip()}:{constants.DEFAULT_PORT}"
+    players = [[name, "host"] for name in dto.Config().active_players_names]
     game_state = dto.GameState()
 
     with net.ContextManager():
         try:
-            await net.start_server(server_address, lambda address: HostNetworkListener(address, players, game_state))
+            await net.start_server("0.0.0.0", constants.DEFAULT_PORT, constants.DEFAULT_PORT, lambda address: HostNetworkListener(address, players, game_state))
         except OSError as e:
             constants.LOG.warning(f"Could not start the server: {e}")
             return
@@ -61,7 +60,7 @@ async def run_host():
             await ReadyGoView(game_state,GameView(game_state))
             players_copy = players.copy()
             players.clear()
-            players.extend([name, server_address] for name in dto.Config().active_players_names)
+            players.extend([name, "host"] for name in dto.Config().active_players_names)
             net.send("score", game_state.to_json())
             await show_scores(game_state.scores, players_copy)
             game_state.reset()
@@ -71,7 +70,7 @@ lobby_running = True
 
 class SoloHostNetworkListener(HostNetworkListener):
     def action_start(self, resolution):
-        if self.players and self.address == self.players[0][1] and not self.game_state.get_init():
+        if self.players and self._address == self.players[0][1] and not self.game_state.get_init():
             constants.Game().screen_rect = pygame.Rect((0, 0), resolution)
             self.game_state.init(len(self.players))
             net.send("start", resolution)
@@ -87,14 +86,15 @@ async def solo_host_lobby(players):
         net.send_udp("lobby", players)
 
 async def run_solo_host():
+    tcp_port = int(sys.argv[1]) if len(sys.argv) > 1 else constants.DEFAULT_PORT
+    udp_port = int(sys.argv[2]) if len(sys.argv) > 2 else constants.DEFAULT_PORT
     pygame.init()
-    server_address = ("0.0.0.0", constants.DEFAULT_PORT)
     players = []
     game_state = dto.GameState()
 
     with net.ContextManager():
         try:
-            await net.start_server(server_address, lambda address: SoloHostNetworkListener(address, players, game_state))
+            await net.start_server("0.0.0.0", tcp_port, udp_port, lambda address: SoloHostNetworkListener(address, players, game_state))
         except OSError as e:
             constants.LOG.warning(f"Could not start the server: {e}")
             return

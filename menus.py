@@ -86,7 +86,7 @@ def network_menu():
         ip = parts[0]
         
         port = int(parts[1]) if len(parts) > 1 else DEFAULT_PORT
-        await client.run_client((ip, port))
+        await client.run_client(ip, port, port)
     
     menu_options = ["CREATE ROOM", "JOIN", "JOIN GLOBAL"]
     menu_methods = [host.run_host, join, client.run_on_playfab]

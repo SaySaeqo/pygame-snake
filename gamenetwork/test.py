@@ -39,7 +39,7 @@ class DataDistributionTestCase(unittest.TestCase):
 class FailEndPointTestCase(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
         try:
-            await client.connect_to_server(("localhost", 31429))
+            await client.connect_to_server("localhost", 31429)
         except OSError as osError:
             return
         finally:
@@ -73,7 +73,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
             def action_hello(self, data):
                 serverData.received.append(data)
                 serverData.count += 1
-                server.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.address)
+                server.send("gotit", "Yeah, we got it: " + str(len(data)) + " elements", to=self.protocol.transport_address)
 
             def disconnected(self):
                 serverData.connected = False
@@ -91,8 +91,8 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         
         self.server_adress = ("localhost", 31426)
         self.EndPointTester_lambda = lambda address: EndPointTester(address)
-        await server.start_server(self.server_adress, lambda address: ServerTester(address))
-        await client.connect_to_server(self.server_adress, self.EndPointTester_lambda)
+        await server.start_server(self.server_adress[0], self.server_adress[1], self.server_adress[1], lambda address: ServerTester(address))
+        await client.connect_to_server(self.server_adress[0], self.server_adress[1], self.EndPointTester_lambda)
     
     async def runTest(self):
         
@@ -128,7 +128,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.serverTester_data.connected, "Server did not get disconnected event from endpoint")
         self.assertFalse(self.endpointTester_data.connected, "Endpoint did not get disconnected event from server")
 
-        await client.connect_to_server(self.server_adress, self.EndPointTester_lambda)
+        await client.connect_to_server(self.server_adress[0], self.server_adress[1], self.EndPointTester_lambda)
         await asyncio.sleep(0.01)
 
         self.assertTrue(self.serverTester_data.connected, "Server is not reconnected")
