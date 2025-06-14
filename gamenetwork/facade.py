@@ -17,7 +17,7 @@ class Connection:
     @property
     def udp_address(self):
         return (self.protocol.transport_address[0], self.udp_port) if self.udp_port else None
-    def __del__(self):
+    def close(self):
         if not self.transport.is_closing():
             self.transport.close()
         
@@ -25,7 +25,7 @@ class UDPConnection:
     def __init__(self, transport: asyncio.DatagramTransport, protocol: asyncio.DatagramProtocol):
         self.transport = transport
         self.protocol = protocol
-    def __del__(self):
+    def close(self):
         if not self.transport.is_closing():
             self.transport.close()
 
@@ -33,6 +33,9 @@ tcp_connections: dict[str, Connection] = {} # There are multiple connections for
 udp_connection: UDPConnection = None
 server: asyncio.Server = None
 listener = None
+
+def repr_addr(address: tuple[str, int]):
+    return address[0] + ":" + str(address[1])
 
 def _get_sendready_data(action: str, data = None, _id = None) -> bytes:
     return START_SEQ + json.dumps({
@@ -70,7 +73,7 @@ def _distribute_data(data: bytes, addr, transport=None, protocol=None):
         action: str = d["action"]
         data = d["data"]
         _id = d["_id"]
-        listener.__prepare(_id, addr, transport, protocol)
+        listener._prepare(_id, addr, transport, protocol)
         listener.interceptor(action, data)
         # execute actions for fully connected connections or internal actions
         if tcp_connections.get(_id) or action.startswith("_"):
@@ -87,19 +90,23 @@ class _GeneralProtocol(asyncio.Protocol):
     def connection_made(self, transport: asyncio.Transport):
         self.transport_address = transport.get_extra_info('peername')[:2]
         self.transport = transport
-        LOG.debug(f"Connection made with {self.transport_address}")
+        LOG.debug(f"Connection made with {repr_addr(self.transport_address)}")
 
     def data_received(self, data):
         _distribute_data(data, self.transport_address, self.transport, self)
+        listener._clear()
 
     def connection_lost(self, exc):
-        tcp_connections.pop(self._id, None) # delete from connections
-        listener.__prepare(self._id, self.transport_address, self.transport, self)
-        listener.disconnected()
         if exc:
-            LOG.error(f"Connection lost due to error '{exc}' with {self._id}@{self.transport_address}")
+            LOG.error(f"Connection lost due to error '{exc}' with {self._id}@{repr_addr(self.transport_address)}")
         else:
-            LOG.debug(f"Connection lost with {self._id}@{self.transport_address}")
+            LOG.debug(f"Connection lost with {self._id}@{repr_addr(self.transport_address)}")
+        conn = tcp_connections.pop(self._id, None)
+        if conn: conn.close()
+        listener._prepare(self._id, self.transport_address, self.transport, self)
+        listener.disconnected()
+        listener._clear()
+
         
 
 class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
@@ -118,9 +125,10 @@ class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
         connection = tcp_connections.get(listener._id)
         if connection:
             connection.udp_port = addr[1]
+        listener._clear()
 
     def error_received(self, exc):
-        LOG.warning("UDB error: {}".format(exc))
+        LOG.warning(f"UDB error: {exc}")
 
     def connection_lost(self, exc):
         if exc:
@@ -141,11 +149,16 @@ def tcp_only(func):
     return wrapper
 
 class NetworkListener:
-    def __prepare(self, _id: str, _address: str, transport: asyncio.Transport, protocol: _GeneralProtocol):
+    def _prepare(self, _id: str, _address: str, transport: asyncio.Transport, protocol: _GeneralProtocol):
         self._id: str = _id
         self._address: str = _address
         self.transport = transport
         self.protocol = protocol
+    def _clear(self):
+        self._id: str = None
+        self._address: str = None
+        self.transport = None
+        self.protocol = None
     def interceptor(self, action, data): ...
     def connected(self): ...
     def disconnected(self): ...
@@ -161,19 +174,24 @@ class NetworkListener:
     def action__confirm_id(self, data):
         tcp_connections[self._id] = Connection(self.transport, self.protocol, None)
         self.protocol._id = self._id
+        LOG.debug("Connected with valid id.")
         self.connected()
+        self._still_connecting.set_result("done!")
+
 
     ## server only
     @tcp_only
     def action__check_if_id_is_available(self, data):
+        LOG.debug(f"Negotating id with {repr_addr(self._address)}...")
         if tcp_connections.get(self._id): # not available
             self.transport.write(_get_sendready_data("_send_id_proposition"))
+            LOG.debug(f"Sending request for change of id. '{self._id}' is already taken.")
         else: # available
             tcp_connections[self._id] = Connection(self.transport, self.protocol, None)
             self.protocol._id = self._id
             self.transport.write(_get_sendready_data("_confirm_id", _id = self._id))
+            LOG.debug("Connected with valid id.")
             self.connected()
-
 
 async def connect_to_server(ip: str, tcp_port: int, udp_port: int, network_listener: NetworkListener):
     # Assign global variables listed below
@@ -186,7 +204,9 @@ async def connect_to_server(ip: str, tcp_port: int, udp_port: int, network_liste
     local_addr = t.get_extra_info("sockname")[:2]
     t, p = await loop.create_connection(_GeneralProtocol, ip, tcp_port, local_addr=local_addr)
     t.write(_get_sendready_data("_check_if_id_is_available", _id = randomname.generate()))
-    LOG.debug(f"Client listen on address {local_addr}(TCP/UDP)")
+    listener._still_connecting = loop.create_future()
+    await listener._still_connecting
+    LOG.debug(f"Client listen on address {repr_addr(local_addr)}(TCP/UDP)")
 
 async def start_server(ip: str, tcp_port: int, udp_port: int, network_listener: NetworkListener):
     # Assign global variables listed below
@@ -221,6 +241,7 @@ def send_udp(action: str, data = None, to: str = None):
             LOG.warning(f"Could not send message to {to}. No such connection.")
     else:
         for to, connection in tcp_connections.items():
+            if server and connection.udp_port == None: return #TODO:opisać
             udp_connection.transport.sendto(_get_sendready_data(action, data, to), connection.udp_address)
         
 
@@ -230,17 +251,19 @@ def is_connected(_id: str) -> bool:
 
 def close():
     """ Resets global variables and closes all connections. """
+    LOG.debug("Closing all connections.")
     # Prepare for deletion and delete global references listed below
-    global server, tcp_connections, udp_connection, listener
+    global server, tcp_connections, udp_connection
     if server:
         server.close()
     for connection in tcp_connections.values():
         connection.transport.write_eof()
+        connection.close()
+    udp_connection.close()
+    listener._clear()
     server = None
     tcp_connections.clear()
     udp_connection = None
-    listener = None
-    LOG.debug("All connections have been closed.")
 
     
 class ContextManager:
