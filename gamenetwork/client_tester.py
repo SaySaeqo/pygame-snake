@@ -15,14 +15,17 @@ async def main():
         LOG.warning("Use: python client_tester.py <server_ip> <tcp_port> <udp_port>")
         sys.exit()
     name, ip, tcp_port, udp_port = sys.argv
+    tcp_port = int(tcp_port)
+    udp_port = int(udp_port)
 
     with net.ContextManager():
         await net.connect_to_server(ip, tcp_port, udp_port, ClientTester())
 
-        print("Write action to send tcp action to server."
-              "> Add 'udp_' prefix to send UDP action."
-              "> Write 'const_data' to remember once entered data."
-              "> Leave action blank to send again the same action."
+        print("Write action to send tcp action to server.\n"
+              "> Add 'UDP' prefix to send UDP action.\n"
+              "> Write 'const_data' to remember once entered data.\n"
+              "> Leave action blank to send again the same action.\n"
+              "> Use action 'wait' to await n seconds specified in data.\n"
               "> Use action 'q' to quit this client.")
 
         action = None
@@ -41,9 +44,12 @@ async def main():
 
             if action == "const_data":
                 const_data = not const_data
-            elif action.startswith("udp_"):
-                net.send_udp(action.removeprefix("udp_"), data)
-                LOG.info(f"UDP action '{action}' has been sended.")
+            elif action == "wait":
+                await asyncio.sleep(int(data))
+            elif action.startswith("UDP"):
+                _action = action.removeprefix("UDP")
+                net.send_udp(_action, data)
+                LOG.info(f"UDP action '{_action}' has been sended.")
             else:
                 net.send(action, data)
                 LOG.info(f"TCP action '{action}' has been sended.")

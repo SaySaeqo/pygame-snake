@@ -4,6 +4,7 @@ import logging
 import toolz
 import typing
 import randomname
+import functools
 
 LOG = logging.getLogger("gamenetwork")
 END_SEQ = b"\0---\0"
@@ -33,6 +34,7 @@ tcp_connections: dict[str, Connection] = {} # There are multiple connections for
 udp_connection: UDPConnection = None
 server: asyncio.Server = None
 listener = None
+udp_server_address = None
 
 def repr_addr(address: tuple[str, int]):
     return address[0] + ":" + str(address[1])
@@ -125,6 +127,7 @@ class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
         connection = tcp_connections.get(listener._id)
         if connection:
             connection.udp_port = addr[1]
+            listener.udp_connected()
         listener._clear()
 
     def error_received(self, exc):
@@ -137,15 +140,25 @@ class _GeneralDatagramProtocol(asyncio.DatagramProtocol):
             LOG.debug("UDP endpoint lost without error.")
 
 
+def udp_only(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if (hasattr(self, "transport") and self.transport) or (hasattr(self, "protocol") and self.protocol):
+            LOG.warning(f"You should not call method {func.__name__} using TCP call!")
+        else:
+            func(self, *args, **kwargs)
+    return wrapper
+
 def tcp_only(func):
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         try: 
             if self.transport == None or self.protocol == None:
-                LOG.warning("You should not call internal method using UDP call!")
+                LOG.warning(f"You should not call method {func.__name__} using UDP call!")
             else:
                 func(self, *args, **kwargs)
         except AttributeError:
-            LOG.error("You should not call internal method using UDP call!")
+            LOG.error(f"You should not call method {func.__name__} using UDP call!")
     return wrapper
 
 class NetworkListener:
@@ -161,6 +174,7 @@ class NetworkListener:
         self.protocol = None
     def interceptor(self, action, data): ...
     def connected(self): ...
+    def udp_connected(self): ...
     def disconnected(self): ...
 
     # internal actions
@@ -198,7 +212,9 @@ async def connect_to_server(ip: str, tcp_port: int, udp_port: int, network_liste
     global listener, udp_connection
     listener = network_listener
     loop = asyncio.get_running_loop()
-    t, p = await loop.create_datagram_endpoint(_GeneralDatagramProtocol, local_addr=("0.0.0.0", 0), remote_addr=(ip, udp_port))
+    t, p = await loop.create_datagram_endpoint(_GeneralDatagramProtocol, local_addr=("0.0.0.0", 0))
+    global udp_server_address # remote_addr parameter in method above does not work on Windows
+    udp_server_address = (ip, udp_port) 
     udp_connection = UDPConnection(t, p)
     # Connect to server
     local_addr = t.get_extra_info("sockname")[:2]
@@ -234,15 +250,20 @@ def send(action: str, data = None, to: str = None):
 def send_udp(action: str, data = None, to: str = None):
     if not udp_connection: return
     if to:
-        conn = tcp_connections.get(to)
-        if conn:
-            udp_connection.transport.sendto(_get_sendready_data(action, data, to), conn.udp_address)
+        connection = tcp_connections.get(to)
+        if connection:
+            address = connection.udp_address
+            if address == None: address = udp_server_address
+            if address == None: return
+            udp_connection.transport.sendto(_get_sendready_data(action, data, to), address)
         else:
             LOG.warning(f"Could not send message to {to}. No such connection.")
     else:
         for to, connection in tcp_connections.items():
-            if server and connection.udp_port == None: return #TODO:opisać
-            udp_connection.transport.sendto(_get_sendready_data(action, data, to), connection.udp_address)
+            address = connection.udp_address
+            if address == None: address = udp_server_address
+            if address == None: return
+            udp_connection.transport.sendto(_get_sendready_data(action, data, to), address)
         
 
 def is_connected(_id: str) -> bool:
@@ -259,8 +280,10 @@ def close():
     for connection in tcp_connections.values():
         connection.transport.write_eof()
         connection.close()
-    udp_connection.close()
-    listener._clear()
+    if udp_connection:
+        udp_connection.close()
+    if listener:
+        listener._clear()
     server = None
     tcp_connections.clear()
     udp_connection = None

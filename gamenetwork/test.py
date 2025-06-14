@@ -44,6 +44,9 @@ class DataDistribution(unittest.TestCase):
 
 class FailedToConnect(unittest.IsolatedAsyncioTestCase):
     async def runTest(self):
+        server.LOG.setLevel(logging.WARNING)
+        client.LOG.setLevel(logging.WARNING)
+        LOG.setLevel(logging.WARNING)
         try:
             await client.connect_to_server("localhost", 31429, 31429, client.NetworkListener())
         except OSError as osError:
@@ -52,8 +55,13 @@ class FailedToConnect(unittest.IsolatedAsyncioTestCase):
             client.close()
         self.fail("Expected OSError")
 
-class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
+
+class EndPoint(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        server.LOG.setLevel(logging.WARNING)
+        client.LOG.setLevel(logging.WARNING)
+        LOG.setLevel(logging.WARNING)
+
         self.outgoing = [
             {"action": "hello", "data": {"a": 321, "b": [2, 3, 4], "c": ["afw", "wafF", "aa", "weEEW", "w234r"], "d": ["x"] * 256}},
             {"action": "hello", "data": [454, 35, 43, 543, "aabv"]},
@@ -96,9 +104,9 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
                 endpointData.connected = False
         
         self.endpoint_tester = EndPointTester
-        self.server_adress = ("localhost", 31429, 31429)
-        await server.start_server(*self.server_adress, ServerTester())
-        await client.connect_to_server(*self.server_adress, EndPointTester())
+        self.ports = (31429, 31429)
+        await server.start_server("0.0.0.0", *self.ports, ServerTester())
+        await client.connect_to_server("localhost", *self.ports, EndPointTester())
     
     async def runTest(self):
         
@@ -132,7 +140,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.serverTester_data.connected, "Server have not got disconnected event from endpoint")
         self.assertFalse(self.endpointTester_data.connected, "Endpoint have not got disconnected event from server")
 
-        await client.connect_to_server(*self.server_adress, self.endpoint_tester())
+        await client.connect_to_server("localhost", *self.ports, self.endpoint_tester())
         await asyncio.sleep(0.01)
 
         self.assertTrue(self.serverTester_data.connected, "Server could not reconnected")
@@ -140,7 +148,39 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
 
 
     async def asyncTearDown(self):
-        LOG.info("Closing test.")
+        LOG.info("Closing EndPoint test.")
+        server.close()
+        client.close()
+
+class UDPEndPoint(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        server.LOG.setLevel(logging.WARNING)
+        client.LOG.setLevel(logging.WARNING)
+        LOG.setLevel(logging.WARNING)
+        self.ports = (40000, 40010)
+
+        self.server_data = server_data = { "arrived": False }
+        self.client_data = client_data = { "arrived": False }
+
+        class HolePunchingListener(server.NetworkListener):
+            def action__hole_punching(self, data):
+                server_data["arrived"] = True
+
+        class ClientHolePunchingListener(client.NetworkListener):
+            def action__hole_punching(self, data):
+                client_data["arrived"] = True
+
+        await server.start_server("0.0.0.0", *self.ports, HolePunchingListener())
+        await client.connect_to_server("localhost", *self.ports, ClientHolePunchingListener())
+
+    async def runTest(self):
+        await asyncio.sleep(2.1) # enough for 3 holepunching actions per side
+        
+        self.assertTrue(self.server_data["arrived"], "Server have not got holepunching message.")
+        self.assertTrue(self.client_data["arrived"], "Client have not got holepunching message.")
+
+    async def asyncTearDown(self):
+        LOG.info("Closing UDP test")
         server.close()
         client.close()
 
@@ -148,7 +188,7 @@ class EndPointTestCase(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("asyncio").setLevel(logging.INFO)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
     server.LOG = logging.getLogger("server")
     client.LOG = logging.getLogger("client")
     unittest.main()
