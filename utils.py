@@ -38,6 +38,7 @@ def get_my_ip() -> str:
     return first_ip[0] if first_ip else None
 
 def singleton(cls):
+    """It is a class decorator"""
     instance=cls()
     cls.__new__ = cls.__call__= lambda cls: instance
     cls.__init__ = lambda self: None

@@ -9,19 +9,18 @@ import logging
 
 class HostNetworkListener(net.NetworkListener):
 
-    def __init__(self, address, local_players: list, game_state: dto.GameState):
-        super().__init__(address)
+    def __init__(self, local_players: list, game_state: dto.GameState):
         self.players = local_players
         self.game_state = game_state
 
     def action_join(self, names):
         constants.LOG.info(f"Player joined: {names}")
-        new_players = [[name, self._address] for name in names]
+        new_players = [[name, self._id] for name in names]
         self.players.extend(new_players)
 
     def action_control(self, data):
         try:
-            idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self._address)
+            idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self._id)
             player = self.game_state.players[idx]
             player.decision = data["direction"]
         except StopIteration:
@@ -30,7 +29,7 @@ class HostNetworkListener(net.NetworkListener):
     def disconnected(self):
         constants.LOG.info("Player disconnected")
         for i in range(len(self.players)):
-            if self.players[i][1] == self._address:
+            if self.players[i][1] == self._id:
                 del self.players[i]
 
     def action_respond(self, msg):
@@ -45,7 +44,7 @@ async def run_host():
 
     with net.ContextManager():
         try:
-            await net.start_server("0.0.0.0", constants.DEFAULT_PORT, constants.DEFAULT_PORT, lambda address: HostNetworkListener(address, players, game_state))
+            await net.start_server("0.0.0.0", constants.DEFAULT_PORT, constants.DEFAULT_PORT, HostNetworkListener(players, game_state))
         except OSError as e:
             constants.LOG.warning(f"Could not start the server: {e}")
             return
@@ -94,7 +93,7 @@ async def run_solo_host():
 
     with net.ContextManager():
         try:
-            await net.start_server("0.0.0.0", tcp_port, udp_port, lambda address: SoloHostNetworkListener(address, players, game_state))
+            await net.start_server("0.0.0.0", tcp_port, udp_port, SoloHostNetworkListener(players, game_state))
         except OSError as e:
             constants.LOG.warning(f"Could not start the server: {e}")
             return

@@ -102,7 +102,7 @@ async def run_client(ip:str, tcp_port: int, udp_port: int):
     with net.ContextManager():
         try:
             await first_completed(
-                net.connect_to_server(ip, tcp_port, udp_port, lambda address: ClientNetworkListener(address)),
+                net.connect_to_server(ip, tcp_port, udp_port, ClientNetworkListener()),
                 pygameview.run_async(pygameview.common.WaitingView("Connecting to server"))
                 )
         except OSError as e:
@@ -111,7 +111,7 @@ async def run_client(ip:str, tcp_port: int, udp_port: int):
         finally:
             pygameview.close_view()
         
-        if not net.is_connected(host_address):
+        if len(net.tcp_connections) == 0:
             constants.LOG.info("Connection aborted")
             return
         
@@ -123,7 +123,7 @@ async def run_client(ip:str, tcp_port: int, udp_port: int):
         while should_relaunch:
             should_relaunch = False
             net.send("join", Config().active_players_names)
-            await ClientLobbyView(f"{ip}:{tcp_port}")
+            await ClientLobbyView(f"{ip}:{tcp_port}:{udp_port}")
     
 
 playfab_result = None
