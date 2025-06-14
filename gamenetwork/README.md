@@ -1,7 +1,7 @@
 # gamenetwork - lighweight multiplayer networking library
 Gamenetwork is lightweight library to be used mostly with pygame, but can work also in other scenarios.  
 It assumes that there will be not more than one server or client running per python instance so connections for simplicity of usage are made global variables.  
-Simply usage predicts connecting to the server (or creating one) by ip-port tuple, sending action-based messages and closing connections before exit.  
+Simply usage predicts connecting to the server (or creating one), sending action-based messages and closing connections before exit.  
 Attention! By default, while processing received data, messages with same action are mostly ignored (only 1st is taken)
 
 # example code usage
@@ -13,7 +13,7 @@ import asyncio
 
 async def main():
 
-    running = True
+    running = asyncio.get_running_loop().create_future()
 
     class Server(net.NetworkListener):
 
@@ -22,8 +22,7 @@ async def main():
             net.send("response", data.upper())
 
         def action_stop(self, data):
-            nonlocal running
-            running = False
+            running.set_result("done!")
 
         def connected(self):
             print("I am connected <3")
@@ -32,9 +31,8 @@ async def main():
             print("Noooo :<")
 
     with net.ContextManager():
-        await net.start_server((None, 1234), lambda address: Server(address))
-        while running:
-            await asyncio.sleep(0.1)
+        await net.start_server("0.0.0.0", 1234, 1234, Server(address))
+        await running
 
 asyncio.run(main())
 
@@ -44,15 +42,15 @@ import asyncio
 
 async def main():
 
-    running = True
+    running = asyncio.get_running_loop().create_future()
+    
     def send_input():
         text = input("You: ")
         if text:
             net.send("hello", text)
         else:
             net.send("stop")
-            nonlocal running
-            running = False
+            running.set_result("done!")
 
     class Client(net.NetworkListener):
 
@@ -67,9 +65,8 @@ async def main():
             print("Noooo :<")
 
     with net.ContextManager():
-        await net.connect_to_server(("localhost", 1234), lambda address: Client(address))
+        await net.connect_to_server("localhost", 1234, 1234, Client(address))
         send_input()
-        while running:
-            await asyncio.sleep(0.1)
+        await running
     
 asyncio.run(main())

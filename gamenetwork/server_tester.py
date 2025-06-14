@@ -1,3 +1,5 @@
+# Run this script on some server and then run one of client scripts on your pc
+
 import facade as net
 import sys
 import logging
