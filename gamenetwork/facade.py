@@ -1,3 +1,5 @@
+# This file is entire gamenetwork codebase. Cool it is, isn't it?
+
 import asyncio
 import json
 import logging

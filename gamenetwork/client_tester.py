@@ -1,3 +1,6 @@
+# Use paired with server_tester.py
+# Use it like that: python client_tester.py <server_ip> <tcp_port> <udp_port> 
+
 import facade as net
 import sys
 import logging

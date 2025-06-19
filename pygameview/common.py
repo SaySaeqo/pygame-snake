@@ -1,3 +1,5 @@
+# Bunch of usuful pygame views
+
 import pygame
 import math
 from . import core
@@ -126,7 +128,7 @@ async def show_menu(title, menu):
     """
     menu should be function returning tuple of 2 lists:
     - list of options names
-    - list of options' couritines to be awaited when chosen
+    - list of options' coroutines to be awaited when chosen
     """
     choice = 0
     while True:

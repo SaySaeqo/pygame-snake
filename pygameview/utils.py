@@ -1,3 +1,5 @@
+# Some useful pygame utilities
+
 import pygame
 class Color:
     white = (255, 255, 255)

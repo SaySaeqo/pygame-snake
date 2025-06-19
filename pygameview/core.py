@@ -1,67 +1,12 @@
+# You can try to import profiling_helpers if you want some manual profiling here...
+
 import pygame
 import sys
 import logging
 import asyncio
 import typing
 
-import time
-import atexit
-count = {}
-probes = {}
-average_probe_length = 100
-average = {}
-fps = 60
-frame_time = 1/fps
-spike_def = 2
-critical_def = 4
-test_start = None
-def log_how_much_time_of_frame(before, what):
-    took = time.perf_counter() - before
-    if not what in average:
-        if what not in count:
-            count[what] = 0
-            probes[what] = []
-        if count[what] < average_probe_length:
-            count[what] += 1
-            probes[what].append(took)
-        if count[what] == average_probe_length:
-            probe = probes[what]
-            average[what] = sum(probe) / len(probe)
-            global test_start
-            if not test_start:
-                test_start = time.perf_counter()
-    elif took/frame_time > 1.0:
-        logging.getLogger(__package__).error(f"{what} spiked {took/average[what]:.2f} more than usual. Which is {took/frame_time:.2f} of frame.")
-    elif took > average[what]*critical_def:
-        logging.getLogger(__package__).warning(f"{what} spiked {took/average[what]:.2f} more than usual. Which is {took/frame_time:.2f} of frame.")
-    elif took > average[what]*spike_def:
-        logging.getLogger(__package__).info(f"{what} spiked {took/average[what]:.2f} more than usual. Which is {took/frame_time:.2f} of frame.")
-    print(f"\r{time.perf_counter() - test_start if test_start else 0:.2f} s", end="")
-    return time.perf_counter()
-
-@atexit.register
-def log_averages(view = None):
-    global test_start
-    if test_start:
-        view_name = view.__class__.__name__ if view else current_view_name()
-        message = f"END OF VIEW {view_name}:\n--- Averages ---"
-        for what, av in average.items():
-            message += f"\n{what}: {av/frame_time:.2f} of frame"
-        message += "\n--- Minimums ---"
-        for what, probe in probes.items():
-            message += f"\n{what}: {min(probe)/frame_time:.2f} of frame"
-        message += "\n--- Test references ---"
-        message += f"\nFps: {fps}"
-        message += f"\nAverage probe length: {average_probe_length}"
-        message += f"\nTest duration: {time.perf_counter() - test_start:.2f} s"
-        message += f"\nSpike criteria: {spike_def} times more than average"
-        logging.getLogger(__package__).warning(message)
-    average.clear()
-    count.clear()
-    probes.clear()
-    test_start = None
-
-DEFAULT_FPS = 60
+DEFAULT_FPS = 50
 
 class AsyncClock:
     def __init__(self, time_func=pygame.time.get_ticks):
@@ -84,10 +29,13 @@ class AsyncClock:
         now = self.time_func()
         awaited = (now - self.last_tick) / 1000
         self.last_tick = now
-        # more_than_expected = (awaited*1000/ to_await)
-        # if more_than_expected > 2:
-        #     tasks = len(asyncio.all_tasks())
-        #     logging.getLogger(__package__).info(f"Clock's tick is {more_than_expected} times longer than expected. Tasks: {tasks}. Delay: {delay}.")
+
+        # For debugging and profiling purposes
+        more_than_expected = (awaited*1000/ to_await)
+        if more_than_expected > 2:
+            tasks = len(asyncio.all_tasks())
+            logging.getLogger(__package__).debug(f"Clock's tick is {more_than_expected} times longer than expected. Tasks: {tasks}. Delay: {delay}.")
+        
         return awaited
 
 class PyGameView:
@@ -180,9 +128,6 @@ def _update(delta):
         _current_view = None
         _closing = False
 
-loop = asyncio.get_event_loop()
-future = loop.create_future()
-
 
 async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
     try:
@@ -195,7 +140,7 @@ async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing
         while current_view():
             delta = await clock.tick(fps)
             await _update_async(delta)
-        # log_avepyrages(view)
+        # log_averages(view)
         return pop_result()
     finally:
         global _current_view

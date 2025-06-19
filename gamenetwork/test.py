@@ -1,4 +1,4 @@
-# run as: 'python -m gamenetwork.test' from parent folder 
+# Run as: 'python -m gamenetwork.test' from parent folder 
 
 import unittest
 

@@ -1,9 +1,13 @@
+# Works only with server_tester.py
+# Change IP, TCP_PORT, UDP_PORT to your server's values.
+
 import facade as net
 import logging
 import asyncio
 import unittest
 
 LOG = logging.getLogger("client_autotester")
+IP, TCP_PORT, UDP_PORT = "192.168.0.143", 3000, 3100
 
 class MyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
@@ -14,7 +18,6 @@ class MyTest(unittest.IsolatedAsyncioTestCase):
                 if test_data["future"]:
                     test_data["future"].set_result(data)
 
-        IP, TCP_PORT, UDP_PORT = "192.168.0.143", 3000, 3100
         await net.connect_to_server(IP, TCP_PORT, UDP_PORT, ClientTester())
 
     async def runTest(self):

@@ -1,4 +1,5 @@
-# Run this script on some server and then run one of client scripts on your pc
+# Run this script on some server and then run one of the client scripts on your pc
+# Run it like: python server_tester.py <tcp_port> <udp_port>
 
 import facade as net
 import sys
