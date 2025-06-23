@@ -1,6 +1,6 @@
 # Snake Game
 
-This is a Snake game project with networking capabilities. The game can be played in both host and client modes.
+This is a Snake game project with networking capabilities. The game can be played in both host and client modes. For more info about game mechanics and current playtrough go to [Releases](https://github.com/SaySaeqo/pygame-snake/releases).
 
 ## Prerequisites
 
@@ -69,6 +69,7 @@ This will create a `dist` directory with the executable file `snake` (or `snake.
 ## Additional Information
 
 - The game saves scores to `leaderboard.data`.
+- The game saves config to `config.data`.
 - The game can be played in both host and client modes.
 - The game uses asyncio for asynchronous operations.
 
