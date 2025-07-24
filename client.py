@@ -54,7 +54,7 @@ class ClientGameView(pygameview.PyGameView):
         draw_board(ClientNetworkData().game_state)
 
         for name, function in zip(Config().active_players_names, Config().control_functions):
-            net.send("control", {"name": name, "direction": function()})
+            net.send_udp("control", {"name": name, "direction": function()})
 
 class ClientReadyGoView(views.ReadyGoView):
 
@@ -74,8 +74,10 @@ class ClientNetworkListener(net.NetworkListener):
     def action_lobby(self, players):
         ClientNetworkData().players = players
 
-    def action_game(self, game_state):
-        ClientNetworkData().game_state = GameState.from_json(game_state)
+    def action_game(self, game_state_json):
+        game_state = GameState.from_json(game_state_json)
+        if ClientNetworkData().game_state is None or game_state.timestamp > ClientNetworkData().game_state.timestamp:
+            ClientNetworkData().game_state = game_state
 
     def action_start(self, resolution):
         constants.LOG.info("Game is starting")
@@ -92,9 +94,6 @@ class ClientNetworkListener(net.NetworkListener):
     def disconnected(self):
         constants.LOG.info("Disconnected from the server")
         pygameview.close_view()
-
-    def action_print(self, msg):
-        constants.LOG.info(msg)
 
 
 async def run_client(ip:str, tcp_port: int, udp_port: int):
@@ -153,7 +152,7 @@ async def run_on_playfab():
             }, get_playfab_result)
         await asyncio.sleep(0)
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "8787a0cb-b88d-4ea9-bda5-6db2721ea038",
+                "BuildId": "68edda23-d697-4286-94b1-1ad22e30a125",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": "1531a801-9ec3-4d4f-af2f-abcf3400ab00",
             }, get_playfab_result)

@@ -5,6 +5,7 @@ import gameobjects
 import constants
 import gamenetwork as net
 import pygameview
+import time
 
 def draw_board(state: dto.GameState):
         pygame.display.get_surface().fill(constants.Color.black)
@@ -249,4 +250,5 @@ async def solo_host_game(game_state: dto.GameState):
         for player in st.alive_players():
             player.rotation_power = constants.Game().rotation_power + int(st.time_passed / 10)
 
+        game_state.timestamp = time.time_ns()
         net.send_udp("game", game_state.to_json())
