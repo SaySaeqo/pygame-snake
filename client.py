@@ -10,6 +10,7 @@ import pygameutils
 import playfab
 import logging
 import traceback
+import uuid
 
 @singleton
 @dataclass
@@ -50,11 +51,18 @@ class ClientLobbyView(pygameview.PyGameView):
 
 class ClientGameView(pygameview.PyGameView):
 
+    def __init__(self):
+        self.timer = 0
+
     def update(self, delta):
         draw_board(ClientNetworkData().game_state)
+        self.timer += delta
 
-        for name, function in zip(Config().active_players_names, Config().control_functions):
-            net.send_udp("control", {"name": name, "direction": function()})
+        LATENCY = 100  # milliseconds
+        if self.timer > LATENCY / 1000:
+            for name, function in zip(Config().active_players_names, Config().control_functions):
+                net.send_udp("control", {"name": name, "direction": function()})
+            self.timer = 0
 
 class ClientReadyGoView(views.ReadyGoView):
 
@@ -154,7 +162,7 @@ async def run_on_playfab():
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
                 "BuildId": "68edda23-d697-4286-94b1-1ad22e30a125",
                 "PreferredRegions": ["NorthEurope"],
-                "SessionId": "1531a801-9ec3-4d4f-af2f-abcf3400ab00",
+                "SessionId": str(uuid.uuid1()),
             }, get_playfab_result)
         await asyncio.sleep(1)
         ports = playfab_result["Ports"]
