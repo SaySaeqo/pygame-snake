@@ -81,9 +81,10 @@ def _distribute_data(data: bytes, addr, transport=None, protocol=None):
         listener.interceptor(action, data)
         # execute actions for fully connected connections or internal actions
         if tcp_connections.get(_id) or action.startswith("_"):
-            try:
-                getattr(listener, "action_" + action)(data)
-            except AttributeError:
+            method = getattr(listener, "action_" + action, None)
+            if method:
+                method(data)
+            else:
                 LOG.warning(f"Action '{action}' from {_id} is not registered in network listener!")
 
 class _GeneralProtocol(asyncio.Protocol):
