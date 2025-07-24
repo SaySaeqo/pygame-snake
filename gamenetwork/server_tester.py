@@ -1,13 +1,16 @@
 # Run this script on some server and then run one of the client scripts on your pc
 # Run it like: python server_tester.py <tcp_port> <udp_port>
 
-import facade as net
+if __name__ == "__main__":
+    import facade as net
+else:
+    from . import facade as net
 import sys
 import logging
 import asyncio
 
 LOG = logging.getLogger("server_tester")
-
+LOG_FILE = "server_tester.log"
 
 class ServerTester(net.NetworkListener):
     def action_send_udp(self, data):
@@ -25,7 +28,7 @@ class ServerTester(net.NetworkListener):
     def action_send_direct_tcp(self, data):
         self.transport.write(net._get_sendready_data("print", f"Got direct TCP data from server! {data=}", self._id))
     def action_get_logs(self, num_of_last_lines):
-        with open("server_tester.log") as file:
+        with open(LOG_FILE) as file:
             try: 
                 num = int(num_of_last_lines)
             except ValueError:
@@ -38,8 +41,8 @@ class ServerTester(net.NetworkListener):
 
 
 async def main():
-    logging.basicConfig(level=logging.DEBUG, filename="server_tester.log", filemode="w")
-    
+    logging.basicConfig(level=logging.DEBUG, filename=LOG_FILE, filemode="w")
+
     if len(sys.argv) != 3:
         LOG.warning("Use: python server_tester.py <tcp_port> <udp_port>")
         sys.exit()

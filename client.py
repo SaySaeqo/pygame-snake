@@ -44,8 +44,7 @@ class ClientLobbyView(pygameview.PyGameView):
             if event.key == pygame.K_ESCAPE:
                 pygameview.close_view()
             if event.key == pygame.K_RETURN and self.timer > 1:
-                # net.send("start", pygame.display.get_window_size())
-                net.send_udp("respond", "HAHA")
+                net.send("start", pygame.display.get_window_size())
         super().handle_event(event)
 
 
@@ -153,28 +152,31 @@ async def run_on_playfab():
                 "CustomId": "test",
             }, get_playfab_result)
         await asyncio.sleep(0)
-        # playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-        #         "BuildId": "0eb55df1-2af8-47f7-ba4b-e4b4a4d96bda",
-        #         "PreferredRegions": ["NorthEurope"],
-        #         "SessionId": "1531a801-9ec3-4d4f-af2f-6d1f3400f9a5",
-        #     }, get_playfab_result)
-        await asyncio.sleep(0)
-        # ports = playfab_result["Ports"]
-        # ipv4 = playfab_result["IPV4Address"]
-        ipv4 = "20.166.14.209"
-        # tcp_port = None
-        # udp_port = None
-        tcp_port = 30000
-        udp_port = 30100
-        # for port in ports:
-        #     if port["Protocol"] == "TCP":
-        #         tcp_port = int(port["Num"])
-        #     else:
-        #         udp_port = int(port["Num"])
+        playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
+                "BuildId": "8787a0cb-b88d-4ea9-bda5-6db2721ea038",
+                "PreferredRegions": ["NorthEurope"],
+                "SessionId": "1531a801-9ec3-4d4f-af2f-abcf3400ab00",
+            }, get_playfab_result)
+        await asyncio.sleep(1)
+        ports = playfab_result["Ports"]
+        ipv4 = playfab_result["IPV4Address"]
+        tcp_port = None
+        udp_port = None
+        for port in ports:
+            if port["Protocol"] == "TCP":
+                tcp_port = int(port["Num"])
+            else:
+                udp_port = int(port["Num"])
+        # ipv4 = "192.168.1.104"
+        # tcp_port = 8080
+        # udp_port = 8081
         constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}")
         
         pygameview.close_view()
         await run_client(ipv4, tcp_port, udp_port)
+
+        # import gamenetwork.client_tester as client_tester
+        # await client_tester.main(ipv4, tcp_port, udp_port)
         
     except PlayfabError as e:
         constants.LOG.error(f"Playfab error: {e}")

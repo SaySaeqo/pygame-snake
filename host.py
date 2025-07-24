@@ -6,8 +6,8 @@ import dto
 import constants
 import logging
 
-
-class HostNetworkListener(net.NetworkListener):
+import gamenetwork.server_tester as server_tester
+class HostNetworkListener(server_tester.ServerTester):
 
     def __init__(self, local_players: list, game_state: dto.GameState):
         self.players = local_players
@@ -31,10 +31,6 @@ class HostNetworkListener(net.NetworkListener):
         for i in range(len(self.players)):
             if self.players[i][1] == self._id:
                 del self.players[i]
-
-    def action_respond(self, msg):
-        net.send("print", f"Message '{msg}' have got sent back by TCP.")
-        net.send_udp("print", f"Message '{msg}' have got sent back by UDP.")
         
 
 async def run_host():
@@ -69,7 +65,8 @@ lobby_running = True
 
 class SoloHostNetworkListener(HostNetworkListener):
     def action_start(self, resolution):
-        if self.players and self._address == self.players[0][1] and not self.game_state.get_init():
+        constants.LOG.debug(f"Start request received with resolution: {resolution}")
+        if self.players and self._id == self.players[0][1] and not self.game_state.get_init():
             constants.Game().screen_rect = pygame.Rect((0, 0), resolution)
             self.game_state.init(len(self.players))
             net.send("start", resolution)
@@ -80,8 +77,9 @@ async def solo_host_lobby(players):
     clock = pygameview.AsyncClock()
     global lobby_running
     lobby_running = True
+    LOBBY_FPS = 10
     while lobby_running:
-        await clock.tick(pygameview.DEFAULT_FPS)
+        await clock.tick(LOBBY_FPS)
         net.send_udp("lobby", players)
 
 async def run_solo_host():
@@ -108,5 +106,6 @@ async def run_solo_host():
             game_state.reset()
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, filename="snake_host.log", filemode="w")
+    logging.basicConfig(level=logging.DEBUG, filename="host.log", filemode="w")
+    server_tester.LOG_FILE = "host.log"
     asyncio.run(run_solo_host())

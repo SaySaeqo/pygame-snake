@@ -57,7 +57,7 @@ class GameView(pygameview.PyGameView):
 
         draw_board(self.state)
 
-        for idx, player in st.enumarate_alive_players():
+        for idx, player in st.enumerate_alive_players():
             player.move(constants.Game().diameter * st.current_speed * delta)
             # region COLLISION_CHECK
             # with fruits
@@ -185,7 +185,7 @@ async def solo_host_game(game_state: dto.GameState):
     time_passed = 0
 
     while time_passed <= 1:
-        delta = clock.tick(pygameview.DEFAULT_FPS)
+        delta = await clock.tick(pygameview.DEFAULT_FPS)
         time_passed += delta
         net.send_udp("game", game_state.to_json())
 
@@ -194,7 +194,8 @@ async def solo_host_game(game_state: dto.GameState):
     st = game_state
     screen_rect = constants.Game().screen_rect
     while running:
-        for idx, player in st.enumarate_alive_players():
+        delta = await clock.tick(pygameview.DEFAULT_FPS)
+        for idx, player in st.enumerate_alive_players():
             player.move(constants.Game().diameter * st.current_speed * delta)
             # region COLLISION_CHECK
             # with fruits

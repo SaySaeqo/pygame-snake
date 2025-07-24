@@ -1,7 +1,10 @@
 # Use paired with server_tester.py
 # Use it like that: python client_tester.py <server_ip> <tcp_port> <udp_port> 
 
-import facade as net
+if __name__ == "__main__":
+    import facade as net
+else:
+    from . import facade as net
 import sys
 import logging
 import asyncio
@@ -12,14 +15,17 @@ class ClientTester(net.NetworkListener):
     def action_print(self, data):
         print(f"Response: {data}")
 
-async def main():
+async def main(*args):
 
-    if len(sys.argv) != 4:
+    if len(args) == 3:
+        ip, tcp_port, udp_port = args
+    elif len(sys.argv) == 4:
+        name, ip, tcp_port, udp_port = sys.argv
+        tcp_port = int(tcp_port)
+        udp_port = int(udp_port)
+    else:
         LOG.warning("Use: python client_tester.py <server_ip> <tcp_port> <udp_port>")
         sys.exit()
-    name, ip, tcp_port, udp_port = sys.argv
-    tcp_port = int(tcp_port)
-    udp_port = int(udp_port)
 
     with net.ContextManager():
         await net.connect_to_server(ip, tcp_port, udp_port, ClientTester())

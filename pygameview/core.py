@@ -31,10 +31,10 @@ class AsyncClock:
         self.last_tick = now
 
         # For debugging and profiling purposes
-        more_than_expected = (awaited*1000/ to_await)
-        if more_than_expected > 2:
-            tasks = len(asyncio.all_tasks())
-            logging.getLogger(__package__).debug(f"Clock's tick is {more_than_expected} times longer than expected. Tasks: {tasks}. Delay: {delay}.")
+        # more_than_expected = (awaited*1000/ to_await)
+        # if more_than_expected > 2:
+        #     tasks = len(asyncio.all_tasks())
+        #     logging.getLogger(__package__).debug(f"Clock's tick is {more_than_expected} times longer than expected. Tasks: {tasks}. Delay: {delay}.")
         
         return awaited
 

@@ -114,7 +114,7 @@ class GameState:
     def alive_players(self):
         return filter(lambda x: x.alive, self.players)
     
-    def enumarate_alive_players(self):
+    def enumerate_alive_players(self):
         for idx, player in enumerate(self.players):
             if player.alive:
                 yield idx, player

@@ -1,7 +1,10 @@
 # Works only with server_tester.py
 # Change IP, TCP_PORT, UDP_PORT to your server's values.
 
-import facade as net
+if __name__ == "__main__":
+    import facade as net
+else:
+    from . import facade as net
 import logging
 import asyncio
 import unittest
