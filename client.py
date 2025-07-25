@@ -11,6 +11,7 @@ import playfab
 import logging
 import traceback
 import uuid
+import gamenetwork.client_tester as client_tester
 
 @singleton
 @dataclass
@@ -49,15 +50,22 @@ class ClientLobbyView(pygameview.PyGameView):
         super().handle_event(event)
 
 
-class ClientGameView(pygameview.PyGameView):
+class ClientGameView(views.GameView):
 
     def __init__(self):
         self.timer = 0
+        self.last_timestamp = 0
 
     def update(self, delta):
-        draw_board(ClientNetworkData().game_state)
+        if ClientNetworkData().game_state is None:
+            return
+        if self.last_timestamp < ClientNetworkData().game_state.timestamp:
+            self.last_timestamp = ClientNetworkData().game_state.timestamp
+            self.state = ClientNetworkData().game_state
         self.timer += delta
+        super().update(delta)
 
+    async def do_async(self):
         LATENCY = 100  # milliseconds
         if self.timer > LATENCY / 1000:
             for name, function in zip(Config().active_players_names, Config().control_functions):
@@ -77,15 +85,18 @@ class ClientReadyGoView(views.ReadyGoView):
         pass
 
 
-class ClientNetworkListener(net.NetworkListener):
+class ClientNetworkListener(client_tester.ClientTester):
 
     def action_lobby(self, players):
         ClientNetworkData().players = players
 
-    def action_game(self, game_state_json):
-        game_state = GameState.from_json(game_state_json)
-        if ClientNetworkData().game_state is None or game_state.timestamp > ClientNetworkData().game_state.timestamp:
-            ClientNetworkData().game_state = game_state
+    def action_game(self, game_state):
+        gs = GameState.from_json(game_state)
+        if ClientNetworkData().game_state is not None and ClientNetworkData().game_state.timestamp > gs.timestamp:
+            return
+        if gs.players[0].alive == False and ClientNetworkData().game_state is not None and ClientNetworkData().game_state.players[0].alive:
+            constants.LOG.debug(f"Game state before death: {ClientNetworkData().game_state.to_json()}")
+        ClientNetworkData().game_state = gs
 
     def action_start(self, resolution):
         constants.LOG.info("Game is starting")
@@ -93,6 +104,8 @@ class ClientNetworkListener(net.NetworkListener):
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
+        constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().game_state.to_json()}")
+        constants.LOG.debug(f"Game state after scoring: {game_state}")
         game_state = GameState.from_json(game_state)
         constants.LOG.info("Game over")
         pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
@@ -159,10 +172,12 @@ async def run_on_playfab():
                 "CustomId": "test",
             }, get_playfab_result)
         await asyncio.sleep(0)
+        session_id = str(uuid.uuid1())
+        # session_id = "51273d58-68d8-11f0-befd-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "68edda23-d697-4286-94b1-1ad22e30a125",
+                "BuildId": "9c315e2e-91ae-449c-994f-74f089afea15",
                 "PreferredRegions": ["NorthEurope"],
-                "SessionId": str(uuid.uuid1()),
+                "SessionId": session_id,
             }, get_playfab_result)
         await asyncio.sleep(1)
         ports = playfab_result["Ports"]
@@ -174,15 +189,19 @@ async def run_on_playfab():
                 tcp_port = int(port["Num"])
             else:
                 udp_port = int(port["Num"])
+        constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
         # ipv4 = "192.168.1.104"
         # tcp_port = 8080
         # udp_port = 8081
-        constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}")
-        
+
         pygameview.close_view()
         await run_client(ipv4, tcp_port, udp_port)
 
-        # import gamenetwork.client_tester as client_tester
+        with net.ContextManager():
+            await net.connect_to_server(ipv4, tcp_port, udp_port, ClientNetworkListener())
+            net.send("get_logs", "100")
+            await asyncio.sleep(1)
+
         # await client_tester.main(ipv4, tcp_port, udp_port)
         
     except PlayfabError as e:

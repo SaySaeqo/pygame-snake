@@ -72,6 +72,10 @@ class SoloHostNetworkListener(HostNetworkListener):
             net.send("start", resolution)
             global lobby_running
             lobby_running = False
+    def action_set_latency(self, latency):
+        constants.LOG.debug(f"Setting latency to {latency} ms")
+        global SOLO_HOST_LATENCY
+        SOLO_HOST_LATENCY = int(latency)
 
 async def solo_host_lobby(players):
     clock = pygameview.AsyncClock()
@@ -100,9 +104,9 @@ async def run_solo_host():
             constants.LOG.info("Waiting for players")
             await solo_host_lobby(players)
             constants.LOG.info("Starting the game")
-            await solo_host_game(game_state)
+            gs = await solo_host_game(game_state)
             players.clear()
-            net.send("score", game_state.to_json())
+            net.send("score", gs.to_json())
             game_state.reset()
 
 if __name__ == "__main__":

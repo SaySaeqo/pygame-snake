@@ -179,6 +179,8 @@ class LobbyView(pygameview.PyGameView):
     async def do_async(self):
         net.send_udp("lobby", self.players)
 
+SOLO_HOST_LATENCY = 100  # milliseconds
+
 async def solo_host_game(game_state: dto.GameState):
     clock = pygameview.AsyncClock()
 
@@ -195,6 +197,7 @@ async def solo_host_game(game_state: dto.GameState):
     st = game_state
     screen_rect = constants.Game().screen_rect
     while running:
+        prev_time_passed = st.time_passed
         delta = await clock.tick(pygameview.DEFAULT_FPS)
         for idx, player in st.enumerate_alive_players():
             player.move(constants.Game().diameter * st.current_speed * delta)
@@ -215,10 +218,12 @@ async def solo_host_game(game_state: dto.GameState):
                         st.walls.remove(wall)
                     elif constants.Powerup.GHOSTING not in player.powerups:
                         player.died()
+                        constants.LOG.debug(f"Player {idx+1} clashed with wall")
             # with borders
             if not screen_rect.contains(player.get_rect()):
                 if st.wall_walking_event_timer == 0 and constants.Powerup.GHOSTING not in player.powerups:
                     player.died()
+                    constants.LOG.debug(f"Player {idx+1} died from wall collision")
                 else:
                     player.x = (player.x + screen_rect.width) % screen_rect.width
                     player.y = (player.y + screen_rect.height) % screen_rect.height
@@ -226,9 +231,12 @@ async def solo_host_game(game_state: dto.GameState):
             for pl in st.alive_players():
                 if player.is_colliding_with(pl) and not (constants.Powerup.GHOSTING in player.powerups or constants.Powerup.GHOSTING in pl.powerups):
                     player.died()
+                    constants.LOG.debug(f"Player {idx+1} clashed with sb's tail")
             # endregion
         if st.all_players_dead():
+            constants.LOG.debug(f"Game over: {game_state.to_json()}")
             running = False
+            return game_state
 
         # update time counter
         for player in st.alive_players():
@@ -250,5 +258,10 @@ async def solo_host_game(game_state: dto.GameState):
         for player in st.alive_players():
             player.rotation_power = constants.Game().rotation_power + int(st.time_passed / 10)
 
-        game_state.timestamp = time.time_ns()
-        net.send_udp("game", game_state.to_json())
+        if st.time_passed < prev_time_passed:
+            constants.LOG.error("Time passed decreased")
+
+        # send game state
+        if time.time() - st.timestamp > SOLO_HOST_LATENCY / 1000:
+            st.timestamp = time.time()
+            net.send_udp("game", st.to_json())

@@ -98,7 +98,7 @@ class GameState:
     wall_walking_event_timer: float = 0
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
-    timestamp: int = time.time_ns()
+    timestamp: float = time.time()
 
     def init(self, number_of_players):
         radius = Game().diameter / 2
