@@ -13,6 +13,7 @@ import traceback
 import uuid
 import gamenetwork.client_tester as client_tester
 import json
+import os
 
 DEBUG_GAMESTATES = []
 
@@ -182,7 +183,7 @@ async def run_on_playfab():
         session_id = str(uuid.uuid1())
         # session_id = "51273d58-68d8-11f0-befd-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "330a020f-8482-4090-b381-1e317d54cb8a",
+                "BuildId": "8469c4dc-0acb-48bf-8098-57dc26a2f9aa",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": session_id,
             }, get_playfab_result)
@@ -228,6 +229,16 @@ if __name__ == "__main__":
     pygameutils.create_window("Playfab test", (800, 600))
     asyncio.run(run_on_playfab())
 
-    with open("./debugtools/gamestates2.data", "w") as file:
+    # find free data filename
+    debugtools_dir = "./debugtools"
+    prefix = "gamestates_"
+    index = 0
+    filenames = sorted(os.listdir(debugtools_dir), key=lambda x: len(x))
+    filenames = sorted(filenames)
+    for filename in filenames:
+        if filename == prefix + str(index) + ".data":
+            index += 1
+    # save game to debugtools folder
+    with open(f"./debugtools/{prefix}{index}.data", "w") as file:
         gamestates = sorted(DEBUG_GAMESTATES, key=lambda gs: gs["timestamp"])
         file.writelines(map(lambda gs: json.dumps(gs) + "\n", gamestates))

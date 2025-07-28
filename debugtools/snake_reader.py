@@ -7,10 +7,26 @@ import sys
 from pygameview.utils import title, Align
 
 DEBUG_FPS = 10
-GAMESTATES = "debugtools/gamestates.data"
+GAMESTATES = "debugtools/gamestates_0.data"
 will_pause = False
+CRIMSON_RED = (153, 0, 0)
+
+def create_x_surface(size, color=(255, 0, 0), thickness=5):
+    """Create a square pygame.Surface with an 'X' drawn on it."""
+    surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.line(surface, color, (0, 0), (size-1, size-1), thickness)
+    pygame.draw.line(surface, color, (0, size-1), (size-1, 0), thickness)
+    return surface
 
 def draw_debug(game_state: dto.GameState):
+    for player in game_state.alive_players():
+        player.draw_direction()
+    for player in game_state.players:
+        if player.alive is False:
+            player.draw()
+            player.draw_direction()
+            surface = create_x_surface(player.r*3, CRIMSON_RED, int(player.r))
+            pygame.display.get_surface().blit(surface, (player.x - player.r*1.5, player.y - player.r*1.5 ))
     title(
         f"Time: {game_state.time_passed:.2f}\n"
         f"Stamp: ...{game_state.timestamp%1_000_000:.2f}", 
@@ -25,12 +41,10 @@ def draw_debug(game_state: dto.GameState):
     )
     title(
         "\n".join(
-            f"Pl{i}Pwrs: {",".join(pl.powerups) or "None"}" for i, pl in enumerate(game_state.players)
+            f"Pl{i}Pwrs: {",".join(map(lambda pwr: str(pwr), pl.powerups)) or "None"}" for i, pl in enumerate(game_state.players)
         ),
         Align.BOTTOM_LEFT
     )
-    for player in game_state.alive_players():
-        player.draw_direction()
 
 def pause(clock, msg="PAUSED"):
     title(msg, Align.CENTER, 72)
@@ -39,7 +53,7 @@ def pause(clock, msg="PAUSED"):
         global will_pause
         clock.tick(DEBUG_FPS)
         for e in pygame.event.get():
-            if e.type == pygame.QUIT:
+            if e.type == pygame.QUIT or (e.type == pygame.KEYDOWN and e.key == pygame.K_ESCAPE):
                 sys.exit()
             if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
                 return 0
@@ -65,7 +79,7 @@ if __name__ == "__main__":
             if i < len(game_states):
                 i += pause(clock)
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 i += pause(clock)
