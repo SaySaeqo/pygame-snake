@@ -12,6 +12,9 @@ import logging
 import traceback
 import uuid
 import gamenetwork.client_tester as client_tester
+import json
+
+DEBUG_GAMESTATES = []
 
 @singleton
 @dataclass
@@ -91,6 +94,8 @@ class ClientNetworkListener(client_tester.ClientTester):
         ClientNetworkData().players = players
 
     def action_game(self, game_state):
+        global DEBUG_GAMESTATES
+        DEBUG_GAMESTATES.append(game_state)
         gs = GameState.from_json(game_state)
         if ClientNetworkData().game_state is not None and ClientNetworkData().game_state.timestamp > gs.timestamp:
             return
@@ -104,6 +109,8 @@ class ClientNetworkListener(client_tester.ClientTester):
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
+        global DEBUG_GAMESTATES
+        DEBUG_GAMESTATES.append(game_state)
         constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().game_state.to_json()}")
         constants.LOG.debug(f"Game state after scoring: {game_state}")
         game_state = GameState.from_json(game_state)
@@ -175,7 +182,7 @@ async def run_on_playfab():
         session_id = str(uuid.uuid1())
         # session_id = "51273d58-68d8-11f0-befd-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "9c315e2e-91ae-449c-994f-74f089afea15",
+                "BuildId": "330a020f-8482-4090-b381-1e317d54cb8a",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": session_id,
             }, get_playfab_result)
@@ -220,3 +227,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     pygameutils.create_window("Playfab test", (800, 600))
     asyncio.run(run_on_playfab())
+
+    with open("./debugtools/gamestates2.data", "w") as file:
+        gamestates = sorted(DEBUG_GAMESTATES, key=lambda gs: gs["timestamp"])
+        file.writelines(map(lambda gs: json.dumps(gs) + "\n", gamestates))

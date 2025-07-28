@@ -142,10 +142,10 @@ class GameState:
     
     @classmethod
     def from_json(cls, data):
-        data["players"] = [Snake.from_json(player) for player in data["players"]]
-        data["fruits"] = [Fruit.from_json(fruit) for fruit in data["fruits"]]
-        data["walls"] = [Wall.from_json(wall) for wall in data["walls"]]
         res = cls()
         res.copy_values(data)
+        res.players = [Snake.from_json(player) for player in data["players"]]
+        res.fruits = [Fruit.from_json(fruit) for fruit in data["fruits"]]
+        res.walls = [Wall.from_json(wall) for wall in data["walls"]]
         return res
     

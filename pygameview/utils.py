@@ -9,6 +9,10 @@ class Align:
     CENTER = 0
     TOP = 1
     BOTTOM = 2
+    TOP_LEFT = 3
+    TOP_RIGHT = 4
+    BOTTOM_LEFT = 5
+    BOTTOM_RIGHT = 6
 
 font_scale = 1.0
 
@@ -40,17 +44,21 @@ def text2surface(text: str, font_size=32, with_background=False) -> pygame.Surfa
 
 def merge_into_board(surface: pygame.Surface, align=Align.TOP, offset=0):
     """ 
-    :param align: horizontally always centered; vertically as desired)
+    :param offset: distance to edges of the window
     """
-    x = pygame.display.get_surface().get_rect().centerx - surface.get_rect().centerx
-    if align == Align.TOP:
+    if align in (Align.TOP_LEFT, Align.BOTTOM_LEFT):
+        x = offset
+    elif align in (Align.TOP_RIGHT, Align.BOTTOM_RIGHT):
+        x = pygame.display.get_surface().get_width() - surface.get_width() - offset
+    else: # default: centered
+        x = pygame.display.get_surface().get_rect().centerx - surface.get_rect().centerx
+
+    if align in (Align.TOP, Align.TOP_LEFT, Align.TOP_RIGHT):
         y = offset
-    elif align == Align.CENTER:
-        y = pygame.display.get_surface().get_rect().centery - surface.get_rect().centery
-    elif align == Align.BOTTOM:
+    elif align in (Align.BOTTOM, Align.BOTTOM_LEFT, Align.BOTTOM_RIGHT):
         y = pygame.display.get_surface().get_height() - surface.get_height() - offset
-    else:
-        raise RuntimeError("Align parameter is not correct")
+    else: # default: centered
+        y = pygame.display.get_surface().get_rect().centery - surface.get_rect().centery
     pygame.display.get_surface().blit(surface, (x, y))
 
 def title(text: str, align=Align.TOP, font_size=32, offset=0):
