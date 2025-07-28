@@ -104,9 +104,9 @@ async def run_solo_host():
             constants.LOG.info("Waiting for players")
             await solo_host_lobby(players)
             constants.LOG.info("Starting the game")
-            gs = await solo_host_game(game_state)
+            await solo_host_game(game_state)
             players.clear()
-            net.send("score", gs.to_json())
+            net.send("score", game_state.to_json())
             game_state.reset()
 
 if __name__ == "__main__":

@@ -70,3 +70,8 @@ POWERUP_TIMES = {
     Powerup.CRUSHING: 10.0,
     Powerup.GHOSTING: 5.0
 }
+
+SOUND_MAXTIME = {
+    "bless": 5000,
+    "crush": 1000
+}

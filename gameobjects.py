@@ -72,8 +72,6 @@ class Fruit(Circle):
         elif rnd < 0.2:
             if self.powerup == constants.Powerup.WALL_WALKING:
                 self.powerup = constants.Powerup.CRUSHING
-                if pygame.display.get_surface():
-                    pygame.mixer.Sound("sound/bless.mp3").play(maxtime=5000)
             else:
                 self.powerup = constants.Powerup.WEIRD_WALKING
         elif rnd < 0.25:
