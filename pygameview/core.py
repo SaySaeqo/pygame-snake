@@ -6,7 +6,7 @@ import logging
 import asyncio
 import typing
 
-DEFAULT_FPS = 50
+DEFAULT_FPS = 60
 
 class AsyncClock:
     def __init__(self, time_func=pygame.time.get_ticks):
