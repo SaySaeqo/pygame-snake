@@ -1,3 +1,5 @@
+# run as module, use: python -m debugtools.snake_reader
+
 import json
 import dto
 import views
