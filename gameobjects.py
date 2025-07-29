@@ -155,6 +155,7 @@ class Snake(Circle):
                 # Find the closest point to the target point
                 closest = min(points, key=lambda p: t.distance_to(p))
 
+                old_pos = t.x, t.y
                 if constants.Powerup.WEIRD_WALKING in self.powerups or constants.Powerup.CRUSHING in self.powerups:
                     t.x += self.direction.x * distance
                     t.y += self.direction.y * distance
@@ -164,6 +165,9 @@ class Snake(Circle):
 
                 t.x = (t.x + screen_rect.width) % screen_rect.width
                 t.y = (t.y + screen_rect.height) % screen_rect.height
+
+                if t.is_colliding_with(prev):
+                    t.x, t.y = old_pos
 
 
     def consume(self, fruit):
@@ -231,10 +235,6 @@ class Snake(Circle):
     
     def died(self):
         self.alive = False
-
-    def controls(self, function):
-        self.get_decision = function
-        return self
     
     @classmethod
     def at_random_position(cls, radius, color=None):
