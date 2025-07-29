@@ -15,7 +15,27 @@ import gamenetwork.client_tester as client_tester
 import json
 import os
 
-DEBUG_GAMESTATES = []
+
+# find free data filename
+debugtools_dir = "./debugtools"
+prefix = "gamestates_"
+index = 0
+def sk(x:str):
+    if not x.startswith(prefix):
+        return -1
+    nr = int(x.removeprefix(prefix).removesuffix(".data"))
+    return nr
+filenames = sorted(os.listdir(debugtools_dir), key=sk)
+print(filenames)
+for filename in filenames:
+    if filename == prefix + str(index) + ".data":
+        index += 1
+DEBUG_FILENAME = f"{debugtools_dir}/{prefix}{index}.data"
+print(DEBUG_FILENAME)
+
+def DEBUG_WRITE2FILE(some_json):
+    with open(DEBUG_FILENAME, "a") as file:
+        file.write(json.dumps(some_json) + "\n")
 
 @singleton
 @dataclass
@@ -63,11 +83,12 @@ class ClientGameView(views.GameView):
     def update(self, delta):
         if ClientNetworkData().game_state is None:
             return
-        if self.last_timestamp < ClientNetworkData().game_state.timestamp:
-            self.last_timestamp = ClientNetworkData().game_state.timestamp
-            self.state = ClientNetworkData().game_state
+        # if self.last_timestamp < ClientNetworkData().game_state.timestamp:
+        #     self.last_timestamp = ClientNetworkData().game_state.timestamp
+        self.state = ClientNetworkData().game_state
         self.timer += delta
-        super().update(delta)
+        # super().update(delta)
+        views.draw_board(self.state)
 
     async def do_async(self):
         LATENCY = 100  # milliseconds
@@ -95,8 +116,7 @@ class ClientNetworkListener(client_tester.ClientTester):
         ClientNetworkData().players = players
 
     def action_game(self, game_state):
-        global DEBUG_GAMESTATES
-        DEBUG_GAMESTATES.append(game_state)
+        DEBUG_WRITE2FILE(game_state)
         gs = GameState.from_json(game_state)
         if ClientNetworkData().game_state is not None and ClientNetworkData().game_state.timestamp > gs.timestamp:
             return
@@ -110,8 +130,7 @@ class ClientNetworkListener(client_tester.ClientTester):
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
-        global DEBUG_GAMESTATES
-        DEBUG_GAMESTATES.append(game_state)
+        DEBUG_WRITE2FILE(game_state)
         constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().game_state.to_json()}")
         constants.LOG.debug(f"Game state after scoring: {game_state}")
         game_state = GameState.from_json(game_state)
@@ -181,9 +200,9 @@ async def run_on_playfab():
             }, get_playfab_result)
         await asyncio.sleep(0)
         session_id = str(uuid.uuid1())
-        # session_id = "51273d58-68d8-11f0-befd-a6a2e6ca50bc"
+        # session_id = "18fe204e-6c8f-11f0-8c9d-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "8469c4dc-0acb-48bf-8098-57dc26a2f9aa",
+                "BuildId": "840d82de-0543-442a-a019-0afdb8e75666",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": session_id,
             }, get_playfab_result)
@@ -228,17 +247,3 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     pygameutils.create_window("Playfab test", (800, 600))
     asyncio.run(run_on_playfab())
-
-    # find free data filename
-    debugtools_dir = "./debugtools"
-    prefix = "gamestates_"
-    index = 0
-    filenames = sorted(os.listdir(debugtools_dir), key=lambda x: len(x))
-    filenames = sorted(filenames)
-    for filename in filenames:
-        if filename == prefix + str(index) + ".data":
-            index += 1
-    # save game to debugtools folder
-    with open(f"./debugtools/{prefix}{index}.data", "w") as file:
-        gamestates = sorted(DEBUG_GAMESTATES, key=lambda gs: gs["timestamp"])
-        file.writelines(map(lambda gs: json.dumps(gs) + "\n", gamestates))

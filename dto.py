@@ -99,6 +99,8 @@ class GameState:
     current_speed: int = 0
     scores: list[int] = field(default_factory=list)
     timestamp: float = time.time()
+    last_delta: float = 0.0
+    numbering: int = 0
 
     def init(self, number_of_players):
         radius = Game().diameter / 2

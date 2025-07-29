@@ -9,7 +9,7 @@ import sys
 from pygameview.utils import title, Align
 
 DEBUG_FPS = 10
-GAMESTATES = "debugtools/gamestates_0.data"
+GAMESTATES = "debugtools/gamestates_11.data"
 will_pause = False
 CRIMSON_RED = (153, 0, 0)
 
@@ -31,7 +31,9 @@ def draw_debug(game_state: dto.GameState):
             pygame.display.get_surface().blit(surface, (player.x - player.r*1.5, player.y - player.r*1.5 ))
     title(
         f"Time: {game_state.time_passed:.2f}\n"
-        f"Stamp: ...{game_state.timestamp%1_000_000:.2f}", 
+        f"Stamp: ...{game_state.timestamp%1_000_000:.2f}\n"
+        f"LastD: {game_state.last_delta:.2f}\n"
+        f"Nr: {game_state.numbering}", 
         Align.TOP_LEFT
     )
     title(
@@ -41,9 +43,18 @@ def draw_debug(game_state: dto.GameState):
         f"FruitE: {game_state.fruit_event_timer:.2f}",
         Align.TOP_RIGHT
     )
+    def decision_str(decision: int):
+        if decision == 0:
+            return "FORWARD"
+        elif decision == 1:
+            return "LEFT"
+        elif decision == 2:
+            return "RIGHT"
+        else:
+            return "ERROR"
     title(
         "\n".join(
-            f"Pl{i}Pwrs: {",".join(map(lambda pwr: str(pwr), pl.powerups)) or "None"}" for i, pl in enumerate(game_state.players)
+            f"Pl{i}Pwrs: {",".join(map(lambda pwr: str(pwr), pl.powerups)) or "None"}\nPl{i}D: {decision_str(pl.decision)}" for i, pl in enumerate(game_state.players)
         ),
         Align.BOTTOM_LEFT
     )

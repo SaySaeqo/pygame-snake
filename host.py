@@ -76,6 +76,10 @@ class SoloHostNetworkListener(HostNetworkListener):
         constants.LOG.debug(f"Setting latency to {latency} ms")
         global SOLO_HOST_LATENCY
         SOLO_HOST_LATENCY = int(latency)
+    def action_game_send_udp(self, data):
+        global SEND_UDP
+        constants.LOG.debug(f"Sending UDP states set to: {SEND_UDP}")
+        SEND_UDP = not SEND_UDP
 
 async def solo_host_lobby(players):
     clock = pygameview.AsyncClock()
