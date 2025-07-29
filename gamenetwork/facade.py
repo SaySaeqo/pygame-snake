@@ -69,7 +69,7 @@ def _distribute_data(data: bytes, addr, transport=None, protocol=None):
     original_data = data
     try:
         data = _get_readready_data_generator(data)
-        data = toolz.unique(data, lambda x: x["action"])
+        # data = toolz.unique(data, lambda x: x["action"])
     except Exception as e: # I don't know what can go wrong here so I will leave that 'except' and wait...
         LOG.error(f"Error while processing data: {original_data}")
         raise e
