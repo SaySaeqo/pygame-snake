@@ -151,3 +151,94 @@ class GameState:
         res.walls = [Wall.from_json(wall) for wall in data["walls"]]
         return res
     
+import struct
+
+pygameutils.create_window("test")
+
+test = GameState()
+test.init(2)
+
+dict_data = test.to_json()
+print(dict_data)
+
+def serialize(v):
+    if isinstance(v, int):
+        return struct.pack("i", v)
+    if isinstance(v, float):
+        return struct.pack("f", v)
+    if isinstance(v, bool):
+        return struct.pack("?", v)
+    if isinstance(v, str):
+        encoded = v.encode('utf-8')
+        return encoded + b"\x00"
+    if isinstance(v, list) or isinstance(v, tuple):
+        result = struct.pack("I", len(v))
+        for item in v:
+            result += serialize(item)
+        return result
+    if isinstance(v, dict):
+        result = b""
+        for value in v.values():
+            result += serialize(value)
+        return result
+    raise ValueError(f"Cannot serialize type {type(v)}")
+
+def get_serialized_size(v, s):
+    if isinstance(v, int):
+        return struct.calcsize("i")
+    if isinstance(v, float):
+        return struct.calcsize("f")
+    if isinstance(v, bool):
+        return struct.calcsize("?")
+    if isinstance(v, dict):
+        serialized_sizes = []
+        for value in v.values():
+            size = get_serialized_size(value, s)
+            serialized_sizes.append(size)
+            s = s[size:]
+        return sum(serialized_sizes)
+    if isinstance(v, list) or isinstance(v, tuple):
+        return struct.unpack("I", s[:4])[0] * get_serialized_size(v[0], s[4:]) + 4 if len(v) > 0 else 4
+    if isinstance(v, str):
+        return utils.find_index(s, b"\x00") + 1
+    raise ValueError(f"Cannot get size for type {type(v)}")
+
+def deserialize(data, data_type, s, v):
+    if data_type == int:
+        return struct.unpack("i", data)[0]
+    if data_type == float:
+        return struct.unpack("f", data)[0]
+    if data_type == bool:
+        return struct.unpack("?", data)[0]
+    if data_type == str:
+        return data.decode('utf-8')[:-1]
+    if data_type == list or data_type == tuple:
+        deserialized_list = []
+        length = struct.unpack("I", s[:4])[0]
+        s = s[4:]
+        if len(v) == 0:
+            if length == 0:
+                return deserialized_list
+            else:
+                raise ValueError("Cannot determine item type for empty list")
+        items_type = type(v[0])
+        for _ in range(length):
+            item = deserialize(s[:get_serialized_size(v[0], s)], items_type, s, v[0])
+            s = s[get_serialized_size(v[0], s):]
+            deserialized_list.append(item)
+        return deserialized_list
+    if data_type == dict:
+        deserialized_dict = {}
+        for key, value in v.items():
+            deserialized_dict[key] = deserialize(s[:get_serialized_size(value, s)], type(value), s, value)
+            s = s[get_serialized_size(value, s):]
+        return deserialized_dict
+    raise ValueError(f"Cannot deserialize type {data_type}")
+
+serialized = serialize(dict_data)
+print(serialized)
+
+result = {}
+for k, v in dict_data.items():
+    result[k] = deserialize(serialized[:get_serialized_size(v, serialized)], type(v), serialized, v)
+    serialized = serialized[get_serialized_size(v, serialized):]
