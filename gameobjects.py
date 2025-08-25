@@ -89,7 +89,7 @@ class Fruit(Circle):
     
     @classmethod
     def from_json(cls, json):
-        return cls(json["x"], json["y"], json["r"], constants.Powerup[json["powerup"]])
+        return cls(json["x"], json["y"], json["r"], constants.Powerup[json.get("powerup", "NONE")])
                     
 
 class Wall(Circle):
@@ -261,15 +261,15 @@ class Snake(Circle):
         }
      
     @classmethod
-    def from_json(cls, json):
+    def from_json(cls, json: dict):
         snake = cls(json["x"], json["y"], json["r"], json["color"])
-        snake.decision = json["decision"]
+        snake.decision = json.get("decision", Direction.FORWARD)
         snake.direction = pygame.Vector2(json["direction"]["x"], json["direction"]["y"])
         snake.rotation_power = json["rotation_power"]
         snake.alive = json["alive"]
-        for t in json["tail"]:
+        for t in json.get("tail", []):
             tail = Tail.from_json(t, snake.color, outline_width=int(snake.r / 2))
             snake.tail.append(tail)
-        for p, t in json["powerups"].items():
+        for p, t in json.get("powerups", {}).items():
             snake.powerups[constants.Powerup[p]] = t
         return snake

@@ -141,7 +141,7 @@ class GameView(pygameview.PyGameView):
             pygameview.set_view(pygameview.common.PauseView("PAUSED", self))
 
     async def do_async(self):
-        net.send_udp("game", self.state.to_json())
+        net.send_udp("game", self.state.serialize())
 
 class ReadyGoView(pygameview.PyGameView):
 
@@ -161,7 +161,7 @@ class ReadyGoView(pygameview.PyGameView):
             pygameview.set_view(self.next_view)
 
     async def do_async(self):
-        net.send_udp("game", self.state.to_json())
+        net.send_udp("game", self.state.serialize())
 
 class LobbyView(pygameview.PyGameView):
 
@@ -208,7 +208,7 @@ async def solo_host_game(game_state: dto.GameState):
         game_state.timestamp = time.time()
         game_state.last_delta = delta
         game_state.numbering += 1
-        net.send_udp("game", game_state.to_json())
+        net.send_udp("game", game_state.serialize())
 
     # game loop
     while True:
@@ -225,10 +225,10 @@ async def solo_host_game(game_state: dto.GameState):
         game_state.last_delta = delta
         game_state.numbering += 1
         if SEND_UDP:
-            net.send_udp("game", game_state.to_json())
+            net.send_udp("game", game_state.serialize())
         else:
-            net.send("game", game_state.to_json())
+            net.send("game", game_state.serialize())
 
         if game_state.all_players_dead():
-            constants.LOG.debug(f"Game over: {game_state.to_json()}")
+            constants.LOG.debug(f"Game over: {game_state.serialize()}")
             return

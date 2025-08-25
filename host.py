@@ -56,7 +56,7 @@ async def run_host():
             players_copy = players.copy()
             players.clear()
             players.extend([name, "host"] for name in dto.Config().active_players_names)
-            net.send("score", game_state.to_json())
+            net.send("score", game_state.serialize())
             await show_scores(game_state.scores, players_copy)
             game_state.reset()
 
@@ -110,7 +110,7 @@ async def run_solo_host():
             constants.LOG.info("Starting the game")
             await solo_host_game(game_state)
             players.clear()
-            net.send("score", game_state.to_json())
+            net.send("score", game_state.serialize())
             game_state.reset()
 
 if __name__ == "__main__":

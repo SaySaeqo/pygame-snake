@@ -15,6 +15,7 @@ icecream==2.1.3
 idna==3.10
 packaging==24.1
 playfab==0.0.201014
+protobuf==6.32.0
 pydantic==2.11.5
 pydantic_core==2.33.2
 pygame==2.6.1

@@ -116,8 +116,8 @@ class ClientNetworkListener(client_tester.ClientTester):
         ClientNetworkData().players = players
 
     def action_game(self, game_state):
-        DEBUG_WRITE2FILE(game_state)
-        gs = GameState.from_json(game_state)
+        gs = GameState.deserialize(game_state)
+        DEBUG_WRITE2FILE(gs.to_json())
         if ClientNetworkData().game_state is not None and ClientNetworkData().game_state.timestamp > gs.timestamp:
             return
         if gs.players[0].alive == False and ClientNetworkData().game_state is not None and ClientNetworkData().game_state.players[0].alive:
@@ -130,10 +130,10 @@ class ClientNetworkListener(client_tester.ClientTester):
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
-        DEBUG_WRITE2FILE(game_state)
+        game_state = GameState.deserialize(game_state)
+        DEBUG_WRITE2FILE(game_state.to_json())
         constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().game_state.to_json()}")
-        constants.LOG.debug(f"Game state after scoring: {game_state}")
-        game_state = GameState.from_json(game_state)
+        constants.LOG.debug(f"Game state after scoring: {game_state.to_json()}")
         constants.LOG.info("Game over")
         pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
         global should_relaunch

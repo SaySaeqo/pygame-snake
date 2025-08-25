@@ -7,6 +7,8 @@ import pygameutils
 import toolz
 import constants
 import time
+import dto_pb2
+from google.protobuf import json_format
 
 @dataclass
 class Control:
@@ -142,103 +144,48 @@ class GameState:
                 res[k] = [item.to_json() for item in v]
         return res
     
+    def serialize(self):
+        packed = dto_pb2.GameState()
+        json_format.ParseDict(self.to_json(), packed)
+        return packed.SerializeToString()
+
     @classmethod
     def from_json(cls, data):
         res = cls()
         res.copy_values(data)
-        res.players = [Snake.from_json(player) for player in data["players"]]
-        res.fruits = [Fruit.from_json(fruit) for fruit in data["fruits"]]
-        res.walls = [Wall.from_json(wall) for wall in data["walls"]]
+        res.players = [Snake.from_json(player) for player in data.get("players", [])]
+        res.fruits = [Fruit.from_json(fruit) for fruit in data.get("fruits", [])]
+        res.walls = [Wall.from_json(wall) for wall in data.get("walls", [])]
         return res
     
-import struct
+    @classmethod
+    def deserialize(cls, data):
+        packed = dto_pb2.GameState()
+        packed.ParseFromString(data)
+        return cls.from_json(json_format.MessageToDict(packed, preserving_proto_field_name=True))
+    
+if __name__ == "__main__":
+    # Testing serialization
+    import pprint
 
-pygameutils.create_window("test")
+    pygameutils.create_window("test")
 
-test = GameState()
-test.init(2)
+    test = GameState()
+    test.init(2)
+    test.fruits[0].powerup = constants.Powerup.GHOSTING
 
-dict_data = test.to_json()
-print(dict_data)
+    dict_data = test.to_json()
 
-def serialize(v):
-    if isinstance(v, int):
-        return struct.pack("i", v)
-    if isinstance(v, float):
-        return struct.pack("f", v)
-    if isinstance(v, bool):
-        return struct.pack("?", v)
-    if isinstance(v, str):
-        encoded = v.encode('utf-8')
-        return encoded + b"\x00"
-    if isinstance(v, list) or isinstance(v, tuple):
-        result = struct.pack("I", len(v))
-        for item in v:
-            result += serialize(item)
-        return result
-    if isinstance(v, dict):
-        result = b""
-        for value in v.values():
-            result += serialize(value)
-        return result
-    raise ValueError(f"Cannot serialize type {type(v)}")
+    packed = dto_pb2.GameState()
+    json_format.ParseDict(dict_data, packed)
+    print(packed.IsInitialized())
+    serialized = packed.SerializeToString()
+    print(len(serialized))
+    deserialized = dto_pb2.GameState()
+    deserialized.ParseFromString(serialized)
+    gs = json_format.MessageToDict(deserialized, preserving_proto_field_name=True)
 
-def get_serialized_size(v, s):
-    if isinstance(v, int):
-        return struct.calcsize("i")
-    if isinstance(v, float):
-        return struct.calcsize("f")
-    if isinstance(v, bool):
-        return struct.calcsize("?")
-    if isinstance(v, dict):
-        serialized_sizes = []
-        for value in v.values():
-            size = get_serialized_size(value, s)
-            serialized_sizes.append(size)
-            s = s[size:]
-        return sum(serialized_sizes)
-    if isinstance(v, list) or isinstance(v, tuple):
-        return struct.unpack("I", s[:4])[0] * get_serialized_size(v[0], s[4:]) + 4 if len(v) > 0 else 4
-    if isinstance(v, str):
-        return utils.find_index(s, b"\x00") + 1
-    raise ValueError(f"Cannot get size for type {type(v)}")
+    test_result = GameState.from_json(gs)
 
-def deserialize(data, data_type, s, v):
-    if data_type == int:
-        return struct.unpack("i", data)[0]
-    if data_type == float:
-        return struct.unpack("f", data)[0]
-    if data_type == bool:
-        return struct.unpack("?", data)[0]
-    if data_type == str:
-        return data.decode('utf-8')[:-1]
-    if data_type == list or data_type == tuple:
-        deserialized_list = []
-        length = struct.unpack("I", s[:4])[0]
-        s = s[4:]
-        if len(v) == 0:
-            if length == 0:
-                return deserialized_list
-            else:
-                raise ValueError("Cannot determine item type for empty list")
-        items_type = type(v[0])
-        for _ in range(length):
-            item = deserialize(s[:get_serialized_size(v[0], s)], items_type, s, v[0])
-            s = s[get_serialized_size(v[0], s):]
-            deserialized_list.append(item)
-        return deserialized_list
-    if data_type == dict:
-        deserialized_dict = {}
-        for key, value in v.items():
-            deserialized_dict[key] = deserialize(s[:get_serialized_size(value, s)], type(value), s, value)
-            s = s[get_serialized_size(value, s):]
-        return deserialized_dict
-    raise ValueError(f"Cannot deserialize type {data_type}")
-
-serialized = serialize(dict_data)
-print(serialized)
-
-result = {}
-for k, v in dict_data.items():
-    result[k] = deserialize(serialized[:get_serialized_size(v, serialized)], type(v), serialized, v)
-    serialized = serialized[get_serialized_size(v, serialized):]
+    print(dict_data)
+    print(test_result.to_json())

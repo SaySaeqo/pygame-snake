@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package snakegame;
+
+// Vector2 structure used for directions.
+message Vector2 {
+  float x = 1;
+  float y = 2;
+}
+
+// Tail segment (note: color not serialized in current JSON tail objects)
+message Tail {
+  float x = 1;
+  float y = 2;
+  float r = 3;
+  Vector2 direction = 4;
+}
+
+// Circle base (used for walls)
+message Circle {
+  float x = 1;
+  float y = 2;
+  float r = 3;
+}
+
+enum Powerup {
+  NONE = 0;
+  WALL_WALKING = 1;
+  CRUSHING = 2;
+  WEIRD_WALKING = 3;
+  GHOSTING = 4;
+}
+
+// Fruit (extends Circle + powerup)
+message Fruit {
+  float x = 1;
+  float y = 2;
+  float r = 3;
+  Powerup powerup = 4;
+}
+
+enum Decision {
+  FORWARD = 0;
+  LEFT = 1;
+  RIGHT = 2;
+}
+
+// Snake object
+message Snake {
+  float x = 1;
+  float y = 2;
+  float r = 3;
+  Decision decision = 4;
+  Vector2 direction = 5;
+  int32 rotation_power = 6;
+  bool alive = 7;
+  repeated Tail tail = 8;
+  repeated uint32 color = 9;
+  map<string, float> powerups = 10;
+}
+
+// Complete game state (matches GameState.to_json())
+message GameState {
+  repeated Snake players = 1;
+  repeated Fruit fruits = 2;
+  repeated Circle walls = 3;
+  float time_passed = 4;
+  float fruit_event_timer = 5;
+  float wall_event_timer = 6;
+  float wall_walking_event_timer = 7;
+  int32 current_speed = 8;
+  repeated int32 scores = 9;
+  double timestamp = 10;
+  float last_delta = 11;
+  int32 numbering = 12;
+}
