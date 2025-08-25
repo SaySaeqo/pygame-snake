@@ -266,7 +266,7 @@ class Snake(Circle):
         snake.decision = json.get("decision", Direction.FORWARD)
         snake.direction = pygame.Vector2(json["direction"]["x"], json["direction"]["y"])
         snake.rotation_power = json["rotation_power"]
-        snake.alive = json["alive"]
+        snake.alive = json.get("alive", False)
         for t in json.get("tail", []):
             tail = Tail.from_json(t, snake.color, outline_width=int(snake.r / 2))
             snake.tail.append(tail)

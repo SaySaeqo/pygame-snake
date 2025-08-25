@@ -87,8 +87,15 @@ class ClientGameView(views.GameView):
         #     self.last_timestamp = ClientNetworkData().game_state.timestamp
         self.state = ClientNetworkData().game_state
         self.timer += delta
-        # super().update(delta)
-        views.draw_board(self.state)
+        sounds = game_loop(self.state, delta)
+
+        draw_board(self.state)
+        for sound in sounds:
+            pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
+
+        for snake, function in zip(self.state.players[:dto.Config().number_of_players], dto.Config().control_functions):
+            snake.decision = function()
+        # views.draw_board(self.state)
 
     async def do_async(self):
         LATENCY = 100  # milliseconds

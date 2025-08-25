@@ -11,6 +11,7 @@ import functools
 LOG = logging.getLogger("gamenetwork")
 END_SEQ = b"\0---\0"
 START_SEQ = b"\0+++\0"
+STOP_SEQ = b"\0***\0"
 
 class Connection:
     def __init__(self, transport: asyncio.Transport, protocol: asyncio.Protocol, udp_port: int):
@@ -42,11 +43,15 @@ def repr_addr(address: tuple[str, int]):
     return address[0] + ":" + str(address[1])
 
 def _get_sendready_data(action: str, data = None, _id = None) -> bytes:
-    return START_SEQ + json.dumps({
-        "action": action,
-        "data": data,
-        "_id": _id
-    }).encode() + END_SEQ
+    _id = _id or ""
+    is_bytes = b"b"
+    if data is None:
+        data = b""
+    elif not isinstance(data, bytes):
+        data = json.dumps(data).encode()
+        is_bytes = b"j"
+
+    return START_SEQ + action.encode() + STOP_SEQ + _id.encode() + STOP_SEQ + is_bytes + data + END_SEQ
 
 def _get_readready_data_generator(bytestream: bytes) -> typing.Generator[typing.Any, None, None]:
     search_start = 0
@@ -62,7 +67,18 @@ def _get_readready_data_generator(bytestream: bytes) -> typing.Generator[typing.
             end = segment().find(END_SEQ)
         if start == -1 or end == -1:
             return
-        yield json.loads(segment()[start + len(START_SEQ):end].decode())
+        message = segment()[start + len(START_SEQ):end]
+        attrs = message.split(STOP_SEQ)
+        action = attrs[0].decode()
+        _id = attrs[1].decode() if attrs[1] != b"" else None
+        is_bytes = attrs[2][:1]
+        data = json.loads(attrs[2][1:]) if is_bytes == b"j" else attrs[2][1:]
+        data = data if data != b"" else None
+        yield {
+            "action": action,
+            "data": data,
+            "_id": _id
+        }
         search_start += end + len(END_SEQ)
     
 def _distribute_data(data: bytes, addr, transport=None, protocol=None):
