@@ -42,6 +42,8 @@ def DEBUG_WRITE2FILE(some_json):
 class ClientNetworkData:
     players = []
     game_state: GameState = None
+    changed = False
+    my_colors = {}
 
 should_relaunch = True
 
@@ -79,29 +81,42 @@ class ClientGameView(views.GameView):
     def __init__(self):
         self.timer = 0
         self.last_timestamp = 0
+        self.decisions = []
+        self.decisions2 = []
 
     def update(self, delta):
         if ClientNetworkData().game_state is None:
             return
         # if self.last_timestamp < ClientNetworkData().game_state.timestamp:
         #     self.last_timestamp = ClientNetworkData().game_state.timestamp
-        self.state = ClientNetworkData().game_state
+        if ClientNetworkData().changed:
+            self.state = ClientNetworkData().game_state
+            ClientNetworkData().changed = False
+            for name in Config().active_players_names:
+                color, decision = self.decisions2.pop(0) if self.decisions2 else (ClientNetworkData().my_colors[name], 0)
+                find(self.state.players, lambda s: s.color == color).decision = decision
+            game_loop(self.state, constants.NETWORK_GAME_LATENCY / 1000)
+            self.decisions2 = self.decisions
+            self.decisions.clear()
         self.timer += delta
         sounds = game_loop(self.state, delta)
 
         draw_board(self.state)
         for sound in sounds:
             pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
-
-        for snake, function in zip(self.state.players[:dto.Config().number_of_players], dto.Config().control_functions):
-            snake.decision = function()
         # views.draw_board(self.state)
 
     async def do_async(self):
-        LATENCY = 100  # milliseconds
-        if self.timer > LATENCY / 1000:
+        if self.timer > constants.NETWORK_GAME_LATENCY / 1000:
             for name, function in zip(Config().active_players_names, Config().control_functions):
-                net.send_udp("control", {"name": name, "direction": function()})
+                if ClientNetworkData().game_state and name in ClientNetworkData().my_colors:
+                    color = ClientNetworkData().my_colors[name]
+                    snake = find(self.state.players, lambda s: s.color == color)
+                    snake.decision = self.decisions2.pop(0)[1] if self.decisions2 else 0
+                    decision = function()
+                    self.decisions.append((color, decision))
+
+                    net.send_udp("control", {"name": name, "direction": decision})
             self.timer = 0
 
 class ClientReadyGoView(views.ReadyGoView):
@@ -130,6 +145,12 @@ class ClientNetworkListener(client_tester.ClientTester):
         if gs.players[0].alive == False and ClientNetworkData().game_state is not None and ClientNetworkData().game_state.players[0].alive:
             constants.LOG.debug(f"Game state before death: {ClientNetworkData().game_state.to_json()}")
         ClientNetworkData().game_state = gs
+        ClientNetworkData().changed = True
+
+    def action_your_color(self, data):
+        color = data["color"]
+        name = data["name"]
+        ClientNetworkData().my_colors[name] = color
 
     def action_start(self, resolution):
         constants.LOG.info("Game is starting")

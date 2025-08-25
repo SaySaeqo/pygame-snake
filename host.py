@@ -51,6 +51,8 @@ async def run_host():
 
             dto.Config().save_to_file()
             game_state.init(len(players))
+            for snake, (name, _id) in zip(game_state.players, players):
+                net.send("your_color", {"name": name, "color": snake.color}, to=_id)
             net.send("start", pygame.display.get_window_size())
             await ReadyGoView(game_state,GameView(game_state))
             players_copy = players.copy()
@@ -74,8 +76,7 @@ class SoloHostNetworkListener(HostNetworkListener):
             lobby_running = False
     def action_set_latency(self, latency):
         constants.LOG.debug(f"Setting latency to {latency} ms")
-        global SOLO_HOST_LATENCY
-        SOLO_HOST_LATENCY = int(latency)
+        constants.NETWORK_GAME_LATENCY = int(latency)
     def action_game_send_udp(self, data):
         global SEND_UDP
         constants.LOG.debug(f"Sending UDP states set to: {SEND_UDP}")

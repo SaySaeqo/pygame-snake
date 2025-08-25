@@ -193,12 +193,11 @@ class LobbyView(pygameview.PyGameView):
     async def do_async(self):
         net.send_udp("lobby", self.players)
 
-SOLO_HOST_LATENCY = 100  # milliseconds
 SEND_UDP = False
 
 async def solo_host_game(game_state: dto.GameState):
     clock = pygameview.AsyncClock()
-    FPS = 1000 / SOLO_HOST_LATENCY
+    FPS = 1000 / constants.NETWORK_GAME_LATENCY
 
     # ready go
     time_passed = 0

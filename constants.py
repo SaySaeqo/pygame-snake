@@ -75,3 +75,5 @@ SOUND_MAXTIME = {
     "bless": 5000,
     "crush": 1000
 }
+
+NETWORK_GAME_LATENCY = 100  # milliseconds
