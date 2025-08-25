@@ -26,7 +26,6 @@ def sk(x:str):
     nr = int(x.removeprefix(prefix).removesuffix(".data"))
     return nr
 filenames = sorted(os.listdir(debugtools_dir), key=sk)
-print(filenames)
 for filename in filenames:
     if filename == prefix + str(index) + ".data":
         index += 1
@@ -92,12 +91,12 @@ class ClientGameView(views.GameView):
         if ClientNetworkData().changed:
             self.state = ClientNetworkData().game_state
             ClientNetworkData().changed = False
-            for name in Config().active_players_names:
-                color, decision = self.decisions2.pop(0) if self.decisions2 else (ClientNetworkData().my_colors[name], 0)
+            while self.decisions2:
+                color, decision = self.decisions2.pop(0)
                 find(self.state.players, lambda s: s.color == color).decision = decision
             game_loop(self.state, constants.NETWORK_GAME_LATENCY / 1000)
             self.decisions2 = self.decisions
-            self.decisions.clear()
+            self.decisions = []
         self.timer += delta
         sounds = game_loop(self.state, delta)
 
@@ -112,7 +111,7 @@ class ClientGameView(views.GameView):
                 if ClientNetworkData().game_state and name in ClientNetworkData().my_colors:
                     color = ClientNetworkData().my_colors[name]
                     snake = find(self.state.players, lambda s: s.color == color)
-                    snake.decision = self.decisions2.pop(0)[1] if self.decisions2 else 0
+                    snake.decision = find(self.decisions2, lambda d: d[0] == color)[1] if self.decisions2 else 0
                     decision = function()
                     self.decisions.append((color, decision))
 

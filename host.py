@@ -71,6 +71,8 @@ class SoloHostNetworkListener(HostNetworkListener):
         if self.players and self._id == self.players[0][1] and not self.game_state.get_init():
             constants.Game().screen_rect = pygame.Rect((0, 0), resolution)
             self.game_state.init(len(self.players))
+            for snake, (name, _id) in zip(self.game_state.players, self.players):
+                net.send("your_color", {"name": name, "color": snake.color}, to=_id)
             net.send("start", resolution)
             global lobby_running
             lobby_running = False
