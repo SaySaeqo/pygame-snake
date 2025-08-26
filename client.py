@@ -3,7 +3,7 @@ import views
 from utils import *
 from views import *
 import pygameview
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dto import Config, GameState
 import constants
 import pygameutils
@@ -33,18 +33,30 @@ DEBUG_FILENAME = f"{debugtools_dir}/{prefix}{index}.data"
 print(DEBUG_FILENAME)
 
 def DEBUG_WRITE2FILE(some_json):
+    return
     with open(DEBUG_FILENAME, "a") as file:
         file.write(json.dumps(some_json) + "\n")
 
 @singleton
 @dataclass
 class ClientNetworkData:
-    players = []
-    game_state: GameState = None
-    changed = False
-    my_colors = {}
+    players: list = field(default_factory=list)
+    predicted: GameState = None
+    my_colors: dict = field(default_factory=dict)
+    inputs: list = field(default_factory=list)
 
 should_relaunch = True
+
+async def send_controls():
+    while True:
+        for name, function in zip(Config().active_players_names, Config().control_functions):
+            if ClientNetworkData().predicted and name in ClientNetworkData().my_colors:
+                color = ClientNetworkData().my_colors[name]
+                decision = function()
+                ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed))
+
+                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed})
+        await asyncio.sleep(constants.NETWORK_GAME_LATENCY / 1000)
 
 
 class ClientLobbyView(pygameview.PyGameView):
@@ -78,53 +90,52 @@ class ClientLobbyView(pygameview.PyGameView):
 class ClientGameView(views.GameView):
 
     def __init__(self):
-        self.timer = 0
         self.last_timestamp = 0
         self.decisions = []
-        self.decisions2 = []
+        self.delayed_decisions = []
+        self.last_time_passed = 0
+        self.first = True
+        super().__init__(None)
 
     def update(self, delta):
-        if ClientNetworkData().game_state is None:
+        if ClientNetworkData().predicted is None:
             return
         # if self.last_timestamp < ClientNetworkData().game_state.timestamp:
         #     self.last_timestamp = ClientNetworkData().game_state.timestamp
-        if ClientNetworkData().changed:
-            self.state = ClientNetworkData().game_state
-            ClientNetworkData().changed = False
-            while self.decisions2:
-                color, decision = self.decisions2.pop(0)
-                find(self.state.players, lambda s: s.color == color).decision = decision
-            game_loop(self.state, constants.NETWORK_GAME_LATENCY / 1000)
-            self.decisions2 = self.decisions
-            self.decisions = []
-        self.timer += delta
-        sounds = game_loop(self.state, delta)
 
-        draw_board(self.state)
-        for sound in sounds:
-            pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
-        # views.draw_board(self.state)
+        prev_time_passed = ClientNetworkData().predicted.time_passed
+        if self.first:
+            constants.LOG.debug("First")
+            self.test = pygame.time.get_ticks() / 1000
+            self.first = False
+
+        now = pygame.time.get_ticks() / 1000
+        constants.LOG.debug(f"Loop\t{now-self.test=}\t{delta=}")
+        delta = now - self.test
+        self.test = now
+        sounds = game_loop(ClientNetworkData().predicted, delta)
+        # ClientNetworkData().predicted.time_passed += delta
+
+        for color, decision, time_passed in ClientNetworkData().inputs:
+            if prev_time_passed <= time_passed and ClientNetworkData().predicted.time_passed > time_passed:
+                snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
+                snake.decision = decision
+
+        draw_board(ClientNetworkData().predicted)
+        # for sound in sounds:
+        #     pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
 
     async def do_async(self):
-        if self.timer > constants.NETWORK_GAME_LATENCY / 1000:
-            for name, function in zip(Config().active_players_names, Config().control_functions):
-                if ClientNetworkData().game_state and name in ClientNetworkData().my_colors:
-                    color = ClientNetworkData().my_colors[name]
-                    snake = find(self.state.players, lambda s: s.color == color)
-                    snake.decision = find(self.decisions2, lambda d: d[0] == color)[1] if self.decisions2 else 0
-                    decision = function()
-                    self.decisions.append((color, decision))
-
-                    net.send_udp("control", {"name": name, "direction": decision})
-            self.timer = 0
+        pass
 
 class ClientReadyGoView(views.ReadyGoView):
 
     def __init__(self, next_view: pygameview.PyGameView):
-        super().__init__(ClientNetworkData().game_state, next_view)
+        super().__init__(ClientNetworkData().predicted, next_view)
 
     def update(self, delta):
-        self.state = ClientNetworkData().game_state
+        self.state = ClientNetworkData().predicted
+        constants.LOG.debug("LoopGo")
         super().update(delta)
 
     async def do_async(self):
@@ -133,18 +144,60 @@ class ClientReadyGoView(views.ReadyGoView):
 
 class ClientNetworkListener(client_tester.ClientTester):
 
+    def __init__(self):
+        super().__init__()
+        self.controls_task = None
+
     def action_lobby(self, players):
         ClientNetworkData().players = players
 
     def action_game(self, game_state):
         gs = GameState.deserialize(game_state)
         DEBUG_WRITE2FILE(gs.to_json())
-        if ClientNetworkData().game_state is not None and ClientNetworkData().game_state.timestamp > gs.timestamp:
+        if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.timestamp > gs.timestamp:
             return
-        if gs.players[0].alive == False and ClientNetworkData().game_state is not None and ClientNetworkData().game_state.players[0].alive:
-            constants.LOG.debug(f"Game state before death: {ClientNetworkData().game_state.to_json()}")
-        ClientNetworkData().game_state = gs
-        ClientNetworkData().changed = True
+        if gs.players[0].alive == False and ClientNetworkData().predicted is not None and ClientNetworkData().predicted.players[0].alive:
+            constants.LOG.debug(f"Game state before death: {ClientNetworkData().predicted.to_json()}")
+
+        if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.time_passed > 1:
+            current_time = ClientNetworkData().predicted.time_passed
+            now = time.perf_counter()
+            constants.LOG.debug(f"3. {current_time=}\t{gs.time_passed=}\t {now-self.test=}")
+            self.test = now
+            ClientNetworkData().predicted = gs
+            if gs.time_passed < 1.0:
+                ClientNetworkData().predicted.time_passed = 1.0
+            cur_tp = 0
+            for color, decision, tp in sorted(ClientNetworkData().inputs, key=lambda x: x[2]):
+                if cur_tp == 0:
+                    cur_tp = tp
+                if cur_tp < tp:
+                    if (cur_tp - gs.time_passed) > 0:
+                        game_loop(gs, cur_tp - gs.time_passed)
+                    cur_tp = tp
+                snake = find(gs.players, lambda s: s.color == color)
+                snake.decision = decision
+            if current_time > gs.time_passed:
+                game_loop(gs, current_time - gs.time_passed)
+            ClientNetworkData().inputs = []
+        elif ClientNetworkData().predicted is None:
+            ClientNetworkData().predicted = gs
+            arrived_tp = gs.time_passed
+            ClientNetworkData().predicted.time_passed += constants.NETWORK_GAME_LATENCY/1000.0
+            constants.LOG.debug("once")
+            current_time = ClientNetworkData().predicted.time_passed
+            constants.LOG.debug(f"1. {current_time=}\t{arrived_tp=}")
+            self.test = time.perf_counter()
+        else:
+            current_time = ClientNetworkData().predicted.time_passed
+            now = time.perf_counter()
+            constants.LOG.debug(f"2. {current_time=}\t{gs.time_passed=}\t {now-self.test=}")
+            self.test = now
+            ClientNetworkData().predicted = gs
+            ClientNetworkData().predicted.time_passed = current_time
+            ClientNetworkData().inputs = []
+
+
 
     def action_your_color(self, data):
         color = data["color"]
@@ -153,13 +206,16 @@ class ClientNetworkListener(client_tester.ClientTester):
 
     def action_start(self, resolution):
         constants.LOG.info("Game is starting")
+        self.controls_task = asyncio.create_task(send_controls())
+        ClientNetworkData().predicted = None
         pygame.display.set_mode(resolution, pygame.FULLSCREEN if resolution == pygameutils.get_screen_size() else 0)
         pygameview.set_view(ClientReadyGoView(ClientGameView()))
 
     def action_score(self, game_state):
         game_state = GameState.deserialize(game_state)
+        self.controls_task.cancel()
         DEBUG_WRITE2FILE(game_state.to_json())
-        constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().game_state.to_json()}")
+        constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().predicted.to_json()}")
         constants.LOG.debug(f"Game state after scoring: {game_state.to_json()}")
         constants.LOG.info("Game over")
         pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
@@ -183,6 +239,7 @@ async def run_client(ip:str, tcp_port: int, udp_port: int):
             return
         finally:
             pygameview.close_view()
+            await pygameview.wait_closed()
         
         if len(net.tcp_connections) == 0:
             constants.LOG.info("Connection aborted")
@@ -221,40 +278,41 @@ async def run_on_playfab():
     try:
         playfab.PlayFabSettings.TitleId = "EE89E"
         playfab.PlayFabSettings.GlobalExceptionLogger = raise_error
-        playfab.PlayFabClientAPI.LoginWithCustomID({
-                "CreateAccount": True,
-                "CustomId": "test",
-            }, get_playfab_result)
-        await asyncio.sleep(0)
-        session_id = str(uuid.uuid1())
-        # session_id = "18fe204e-6c8f-11f0-8c9d-a6a2e6ca50bc"
-        playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "840d82de-0543-442a-a019-0afdb8e75666",
-                "PreferredRegions": ["NorthEurope"],
-                "SessionId": session_id,
-            }, get_playfab_result)
-        await asyncio.sleep(1)
-        ports = playfab_result["Ports"]
-        ipv4 = playfab_result["IPV4Address"]
-        tcp_port = None
-        udp_port = None
-        for port in ports:
-            if port["Protocol"] == "TCP":
-                tcp_port = int(port["Num"])
-            else:
-                udp_port = int(port["Num"])
-        constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
-        # ipv4 = "192.168.1.104"
-        # tcp_port = 8080
-        # udp_port = 8081
+        # playfab.PlayFabClientAPI.LoginWithCustomID({
+        #         "CreateAccount": True,
+        #         "CustomId": "test",
+        #     }, get_playfab_result)
+        # await asyncio.sleep(0)
+        # session_id = str(uuid.uuid1())
+        # # session_id = "a1891f3a-81c6-11f0-b23f-a6a2e6ca50bc"
+        # playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
+        #         "BuildId": "811f2a7a-2cd4-474b-bb42-d986ccaa9cb7",
+        #         "PreferredRegions": ["NorthEurope"],
+        #         "SessionId": session_id,
+        #     }, get_playfab_result)
+        # await asyncio.sleep(1)
+        # ports = playfab_result["Ports"]
+        # ipv4 = playfab_result["IPV4Address"]
+        # tcp_port = None
+        # udp_port = None
+        # for port in ports:
+        #     if port["Protocol"] == "TCP":
+        #         tcp_port = int(port["Num"])
+        #     else:
+        #         udp_port = int(port["Num"])
+        # constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
+        ipv4 = "192.168.1.104"
+        tcp_port = 8080
+        udp_port = 8081
 
         pygameview.close_view()
+        await pygameview.wait_closed()
         await run_client(ipv4, tcp_port, udp_port)
 
-        with net.ContextManager():
-            await net.connect_to_server(ipv4, tcp_port, udp_port, ClientNetworkListener())
-            net.send("get_logs", "100")
-            await asyncio.sleep(1)
+        # with net.ContextManager():
+        #     await net.connect_to_server(ipv4, tcp_port, udp_port, ClientNetworkListener())
+        #     net.send("get_logs", "100")
+        #     await asyncio.sleep(1)
 
         # await client_tester.main(ipv4, tcp_port, udp_port)
         
@@ -271,6 +329,6 @@ async def run_on_playfab():
     
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, filemode="w", filename="client.log")
     pygameutils.create_window("Playfab test", (800, 600))
     asyncio.run(run_on_playfab())

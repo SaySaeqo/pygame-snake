@@ -6,6 +6,7 @@ import constants
 import gamenetwork as net
 import pygameview
 import time
+import utils
 
 def draw_board(state: dto.GameState):
         pygame.display.get_surface().fill(constants.Color.black)
@@ -54,6 +55,9 @@ def game_loop(st: dto.GameState, delta: float):
     """
     screen_rect = constants.Game().screen_rect or pygame.display.get_surface().get_rect()
     sounds = []
+
+    if delta <= 0:
+        constants.LOG.debug("Delta is non-positive")
 
     for idx, player in st.enumerate_alive_players():
         player.move(constants.Game().diameter * st.current_speed * delta)
@@ -122,6 +126,7 @@ class GameView(pygameview.PyGameView):
 
     def update(self, delta):
         sounds = game_loop(self.state, delta)
+        constants.LOG.debug("HEY")
 
         draw_board(self.state)
         for sound in sounds:
@@ -148,14 +153,15 @@ class ReadyGoView(pygameview.PyGameView):
     def __init__(self, game_state: dto.GameState, next_view: pygameview.PyGameView):
         self.state = game_state
         self.next_view = next_view
-        self.time_passed = 0
 
     def update(self, delta):
-        self.time_passed += delta
+        if self.state is None:
+            return
+        self.state.time_passed += delta
         draw_board(self.state)
-        if self.time_passed <= 0.666:
+        if self.state.time_passed <= 0.666:
             pygameview.utils.title("READY?", pygameview.utils.Align.CENTER)
-        elif self.time_passed <= 1:
+        elif self.state.time_passed <= 1:
             pygameview.utils.title("GO!", pygameview.utils.Align.CENTER, 144)
         else:
             pygameview.set_view(self.next_view)
@@ -194,16 +200,16 @@ class LobbyView(pygameview.PyGameView):
         net.send_udp("lobby", self.players)
 
 SEND_UDP = False
+next_controls = []
 
 async def solo_host_game(game_state: dto.GameState):
     clock = pygameview.AsyncClock()
     FPS = 1000 / constants.NETWORK_GAME_LATENCY
 
     # ready go
-    time_passed = 0
-    while time_passed <= 1:
+    while game_state.time_passed <= 1:
         delta = await clock.tick(FPS)
-        time_passed += delta
+        game_state.time_passed += delta
         game_state.timestamp = time.time()
         game_state.last_delta = delta
         game_state.numbering += 1
@@ -211,10 +217,18 @@ async def solo_host_game(game_state: dto.GameState):
 
     # game loop
     while True:
+
         prev_time_passed = game_state.time_passed
         delta = await clock.tick(FPS)
 
         game_loop(game_state, delta)
+
+        global next_controls
+        for player, direction, time_passed in next_controls:
+            if prev_time_passed < time_passed and game_state.time_passed >= time_passed:
+                player.decision = direction
+
+        next_controls = [(a,b,c) for a,b,c in next_controls if c > game_state.time_passed]
 
         if game_state.time_passed < prev_time_passed:
             constants.LOG.error("Time passed decreased")
