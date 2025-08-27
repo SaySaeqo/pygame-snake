@@ -120,4 +120,8 @@ async def run_solo_host():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, filename="host.log", filemode="w")
     server_tester.LOG_FILE = "host.log"
-    asyncio.run(run_solo_host())
+    try:
+        print("Starting solo host...")
+        asyncio.run(run_solo_host())
+    except KeyboardInterrupt:
+        print("Solo host stopped by user.")

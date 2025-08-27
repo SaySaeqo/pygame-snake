@@ -127,8 +127,6 @@ class ClientNetworkListener(client_tester.ClientTester):
         DEBUG_WRITE2FILE(gs.to_json())
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.timestamp > gs.timestamp:
             return
-        if gs.players[0].alive == False and ClientNetworkData().predicted is not None and ClientNetworkData().predicted.players[0].alive:
-            constants.LOG.debug(f"Game state before death: {ClientNetworkData().predicted.to_json()}")
 
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.time_passed > 1:
             current_time = ClientNetworkData().predicted.time_passed
