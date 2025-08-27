@@ -199,8 +199,12 @@ class LobbyView(pygameview.PyGameView):
     async def do_async(self):
         net.send_udp("lobby", self.players)
 
-SEND_UDP = False
+SEND_UDP = True
 next_controls = []
+
+def add_control(player: gameobjects.Snake, direction: int, time_passed: float):
+    global next_controls
+    next_controls.append((player, direction, time_passed))
 
 async def solo_host_game(game_state: dto.GameState):
     clock = pygameview.AsyncClock()
@@ -243,5 +247,4 @@ async def solo_host_game(game_state: dto.GameState):
             net.send("game", game_state.serialize())
 
         if game_state.all_players_dead():
-            constants.LOG.debug(f"Game over: {game_state.serialize()}")
             return

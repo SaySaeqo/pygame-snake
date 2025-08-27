@@ -53,6 +53,8 @@ async def send_controls():
             if ClientNetworkData().predicted and name in ClientNetworkData().my_colors:
                 color = ClientNetworkData().my_colors[name]
                 decision = function()
+                snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
+                snake.decision = decision
                 ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed))
 
                 net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed})
@@ -87,46 +89,16 @@ class ClientLobbyView(pygameview.PyGameView):
         super().handle_event(event)
 
 
-class ClientGameView(views.GameView):
-
-    def __init__(self):
-        self.last_timestamp = 0
-        self.decisions = []
-        self.delayed_decisions = []
-        self.last_time_passed = 0
-        self.first = True
-        super().__init__(None)
+class ClientGameView(pygameview.PyGameView):
 
     def update(self, delta):
         if ClientNetworkData().predicted is None:
             return
-        # if self.last_timestamp < ClientNetworkData().game_state.timestamp:
-        #     self.last_timestamp = ClientNetworkData().game_state.timestamp
 
-        prev_time_passed = ClientNetworkData().predicted.time_passed
-        if self.first:
-            constants.LOG.debug("First")
-            self.test = pygame.time.get_ticks() / 1000
-            self.first = False
-
-        now = pygame.time.get_ticks() / 1000
-        constants.LOG.debug(f"Loop\t{now-self.test=}\t{delta=}")
-        delta = now - self.test
-        self.test = now
         sounds = game_loop(ClientNetworkData().predicted, delta)
-        # ClientNetworkData().predicted.time_passed += delta
-
-        for color, decision, time_passed in ClientNetworkData().inputs:
-            if prev_time_passed <= time_passed and ClientNetworkData().predicted.time_passed > time_passed:
-                snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
-                snake.decision = decision
-
         draw_board(ClientNetworkData().predicted)
-        # for sound in sounds:
-        #     pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
-
-    async def do_async(self):
-        pass
+        for sound in sounds:
+            pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
 
 class ClientReadyGoView(views.ReadyGoView):
 
@@ -135,7 +107,6 @@ class ClientReadyGoView(views.ReadyGoView):
 
     def update(self, delta):
         self.state = ClientNetworkData().predicted
-        constants.LOG.debug("LoopGo")
         super().update(delta)
 
     async def do_async(self):
@@ -161,9 +132,11 @@ class ClientNetworkListener(client_tester.ClientTester):
 
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.time_passed > 1:
             current_time = ClientNetworkData().predicted.time_passed
-            now = time.perf_counter()
-            constants.LOG.debug(f"3. {current_time=}\t{gs.time_passed=}\t {now-self.test=}")
+            now = pygame.time.get_ticks()
+            time_diff = (now - self.test) / 1000.0
             self.test = now
+            if current_time - gs.time_passed > 2 * constants.NETWORK_GAME_LATENCY / 1000:
+                constants.LOG.debug(f"3. {current_time=:.4f}\t{gs.time_passed=:.4f}\t{time_diff=:.4f}")
             ClientNetworkData().predicted = gs
             if gs.time_passed < 1.0:
                 ClientNetworkData().predicted.time_passed = 1.0
@@ -184,15 +157,17 @@ class ClientNetworkListener(client_tester.ClientTester):
             ClientNetworkData().predicted = gs
             arrived_tp = gs.time_passed
             ClientNetworkData().predicted.time_passed += constants.NETWORK_GAME_LATENCY/1000.0
-            constants.LOG.debug("once")
             current_time = ClientNetworkData().predicted.time_passed
-            constants.LOG.debug(f"1. {current_time=}\t{arrived_tp=}")
-            self.test = time.perf_counter()
+            self.test = pygame.time.get_ticks()
+            # constants.LOG.debug(f"1. {current_time=:.4f}\t{arrived_tp=:.4f}")
         else:
             current_time = ClientNetworkData().predicted.time_passed
-            now = time.perf_counter()
-            constants.LOG.debug(f"2. {current_time=}\t{gs.time_passed=}\t {now-self.test=}")
+            now = pygame.time.get_ticks()
+            time_diff = (now - self.test) / 1000.0
             self.test = now
+            game_loop(gs, current_time - gs.time_passed)
+            if (current_time - gs.time_passed) > 2* constants.NETWORK_GAME_LATENCY/ 1000:
+                constants.LOG.debug(f"2. {current_time=:.4f}\t{gs.time_passed=:.4f}\t{time_diff=:.4f}")
             ClientNetworkData().predicted = gs
             ClientNetworkData().predicted.time_passed = current_time
             ClientNetworkData().inputs = []
@@ -215,8 +190,6 @@ class ClientNetworkListener(client_tester.ClientTester):
         game_state = GameState.deserialize(game_state)
         self.controls_task.cancel()
         DEBUG_WRITE2FILE(game_state.to_json())
-        constants.LOG.debug(f"Gamestate before scoring: {ClientNetworkData().predicted.to_json()}")
-        constants.LOG.debug(f"Game state after scoring: {game_state.to_json()}")
         constants.LOG.info("Game over")
         pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
         global should_relaunch

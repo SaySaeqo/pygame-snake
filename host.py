@@ -23,8 +23,7 @@ class HostNetworkListener(server_tester.ServerTester):
             idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self._id)
             player = self.game_state.players[idx]
             if self.game_state.time_passed < data["time_passed"]:
-                global next_controls
-                next_controls.append((player, data["direction"], data["time_passed"]))
+                add_control(player, data["direction"], data["time_passed"])
         except StopIteration:
             pass
 

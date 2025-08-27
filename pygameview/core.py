@@ -25,10 +25,7 @@ class AsyncClock:
         to_await = (1000.0 / fps)
         delay = (to_await - since_last_tick) / 1000
 
-        # perf_now = time.perf_counter()
         await asyncio.sleep(delay)
-        # perf_delay = time.perf_counter() - perf_now
-        logging.getLogger(__package__).debug(f"{delay=:.4f}")
 
         now = self.time_func()
         awaited = (now - self.last_tick) / 1000
@@ -111,7 +108,7 @@ def mytest(last):
         logging.getLogger(__package__).debug(f"Frame\t{time_passed=}")
     return last
 
-def _update_async(delta: float):
+async def _update_async(delta: float):
     if current_view() is None:
         return
 
@@ -119,7 +116,7 @@ def _update_async(delta: float):
     pygame.display.update()
     for event in pygame.event.get():
         current_view().handle_event(event)
-    # await current_view().do_async()
+    await current_view().do_async()
 
     global _current_view, _closing
     if _closing:
@@ -139,27 +136,19 @@ def _update(delta):
         _current_view = None
         _closing = False
 
-run_async_running = 0
-
 async def run_async(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
-    global run_async_running
     try:
-        run_async_running += 1
         if current_view():
             raise Exception("Cannot run multiple PyGame views at the same time. Currently running: " + current_view_name())
         set_view(view)
         clock = AsyncClock()
-        last = None
-        while current_view(): 
-            last = mytest(last)
-            logging.getLogger(__package__).debug(f"{run_async_running=}")
+        while current_view():
             delta = await clock.tick(fps)
-            _update_async(delta)
+            await _update_async(delta)
         return pop_result()
     finally:
         global _current_view
         _current_view = None
-        run_async_running -= 1
 
 def run(view: PyGameView, fps=DEFAULT_FPS) -> typing.Optional[typing.Any]:
     try:
