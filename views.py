@@ -7,6 +7,7 @@ import gamenetwork as net
 import pygameview
 import time
 import utils
+import asyncio
 
 def draw_board(state: dto.GameState):
         pygame.display.get_surface().fill(constants.Color.black)
@@ -49,12 +50,14 @@ def show_scores(scores, names) -> pygameview.common.PauseView:
         end_phrase += f"{name}: {score}\n"
     return pygameview.common.PauseView(end_phrase)
 
-def game_loop(st: dto.GameState, delta: float):
+def game_loop(st: dto.GameState, delta: float, add_new_entities=True):
     """
     :return: list of sounds' names to play after
     """
     screen_rect = constants.Game().screen_rect or pygame.display.get_surface().get_rect()
     sounds = []
+    fruits_to_add = 0
+    wall_to_add = 0
 
     if delta <= 0:
         constants.LOG.debug("Delta is non-positive")
@@ -70,6 +73,8 @@ def game_loop(st: dto.GameState, delta: float):
                 if fruit.powerup == constants.Powerup.CRUSHING:
                     st.wall_walking_event_timer += constants.POWERUP_TIMES[constants.Powerup.CRUSHING]
                 player.consume(fruit)
+                st.fruits.remove(fruit)
+                fruits_to_add += 1
                 if fruit.powerup == constants.Powerup.CRUSHING:
                     sounds.append("bless")
                 st.scores[idx] += 1
@@ -104,18 +109,24 @@ def game_loop(st: dto.GameState, delta: float):
     st.fruit_event_timer += delta
     st.wall_walking_event_timer = max(0, st.wall_walking_event_timer - delta)
     if st.fruit_event_timer > 5:
-        st.fruits.append(gameobjects.Fruit.at_random_position(constants.Game().diameter / 2))
+        fruits_to_add += 1
         st.fruit_event_timer = 0
     if constants.Game().time_limit and st.time_passed > constants.Game().time_limit:
         st.wall_event_timer += delta
         if st.wall_event_timer > (constants.Game().time_limit**2) / (st.time_passed**2):
-            st.walls += [gameobjects.Wall.at_random_position(constants.Game().diameter)]
+            wall_to_add += 1
             st.wall_event_timer = 0
 
     # something to make it more fun!
     st.current_speed = constants.Game().speed + 2 * int(1 + st.time_passed / 10)
     for player in st.alive_players():
         player.rotation_power = constants.Game().rotation_power + int(st.time_passed / 10)
+    
+    if add_new_entities:
+        for _ in range(fruits_to_add):
+            st.fruits.append(gameobjects.Fruit.with_powerup(constants.Game().diameter / 2))
+        for _ in range(wall_to_add):
+            st.walls.append(gameobjects.Wall.at_random_position(constants.Game().diameter))
 
     return sounds
 
@@ -199,7 +210,19 @@ class LobbyView(pygameview.PyGameView):
     async def do_async(self):
         net.send_udp("lobby", self.players)
 
+
 SEND_UDP = True
+
+async def send_game_state(game_state: dto.GameState):
+    while True:
+        game_state.timestamp = time.time()
+        game_state.numbering += 1
+        if SEND_UDP:
+            net.send_udp("game", game_state.serialize())
+        else:
+            net.send("game", game_state.serialize())
+        await asyncio.sleep(constants.NETWORK_GAME_LATENCY / 1000)
+
 next_controls = []
 
 def add_control(player: gameobjects.Snake, direction: int, time_passed: float):
@@ -208,43 +231,33 @@ def add_control(player: gameobjects.Snake, direction: int, time_passed: float):
 
 async def solo_host_game(game_state: dto.GameState):
     clock = pygameview.AsyncClock()
-    FPS = 1000 / constants.NETWORK_GAME_LATENCY
+    FPS = pygameview.DEFAULT_FPS
+    send_state_task = asyncio.create_task(send_game_state(game_state))
 
     # ready go
     while game_state.time_passed <= 1:
         delta = await clock.tick(FPS)
         game_state.time_passed += delta
-        game_state.timestamp = time.time()
-        game_state.last_delta = delta
-        game_state.numbering += 1
-        net.send_udp("game", game_state.serialize())
 
     # game loop
     while True:
 
         prev_time_passed = game_state.time_passed
         delta = await clock.tick(FPS)
+        
+        global next_controls
+        for player, direction, time_passed in next_controls:
+            if prev_time_passed <= time_passed and prev_time_passed + delta > time_passed:
+                player.decision = direction
+        next_controls = [(a,b,c) for a,b,c in next_controls if c > game_state.time_passed]
 
         game_loop(game_state, delta)
 
-        global next_controls
-        for player, direction, time_passed in next_controls:
-            if prev_time_passed < time_passed and game_state.time_passed >= time_passed:
-                player.decision = direction
 
-        next_controls = [(a,b,c) for a,b,c in next_controls if c > game_state.time_passed]
 
         if game_state.time_passed < prev_time_passed:
             constants.LOG.error("Time passed decreased")
 
-        # send game state
-        game_state.timestamp = time.time()
-        game_state.last_delta = delta
-        game_state.numbering += 1
-        if SEND_UDP:
-            net.send_udp("game", game_state.serialize())
-        else:
-            net.send("game", game_state.serialize())
-
         if game_state.all_players_dead():
+            send_state_task.cancel()
             return

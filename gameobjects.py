@@ -59,28 +59,29 @@ class Fruit(Circle):
         self.powerup = powerup
         super().__init__(x, y, radius, powerup.value)
 
-    def respawn(self):
+    @classmethod
+    def at_random_position(cls, radius, powerup=constants.Powerup.NONE):
         if pygame.display.get_surface():
             rect = pygame.display.get_surface().get_rect()
         else:
             rect = constants.Game().screen_rect
-        self.x = random.random() * rect.width
-        self.y = random.random() * rect.height
+        x = random.random() * rect.width
+        y = random.random() * rect.height
+        return cls(x, y, radius, powerup)
+
+    @classmethod
+    def with_powerup(cls, radius):
         rnd = random.random()
+        powerup = constants.Powerup.NONE
         if rnd < 0.1:
-            self.powerup = constants.Powerup.WALL_WALKING
+            powerup = constants.Powerup.WALL_WALKING
         elif rnd < 0.2:
-            if self.powerup == constants.Powerup.WALL_WALKING:
-                self.powerup = constants.Powerup.CRUSHING
-            else:
-                self.powerup = constants.Powerup.WEIRD_WALKING
+            powerup = constants.Powerup.WEIRD_WALKING
         elif rnd < 0.25:
-            self.powerup = constants.Powerup.GHOSTING
-        else:
-            self.powerup = constants.Powerup.NONE
-        self.color = self.powerup.value
-        self.surface = pygame.Surface((self.r * 2, self.r * 2), flags=pygame.SRCALPHA)
-        pygame.draw.circle(self.surface, self.color, (self.r, self.r), self.r, self.outline_width)
+            powerup = constants.Powerup.GHOSTING
+        elif rnd < 0.27:
+            powerup = constants.Powerup.CRUSHING
+        return cls.at_random_position(radius, powerup)
 
     def to_json(self):
         return super().to_json() | {
@@ -179,7 +180,6 @@ class Snake(Circle):
                 self.powerups[fruit.powerup] += constants.POWERUP_TIMES[fruit.powerup]
             else:
                 self.powerups[fruit.powerup] = constants.POWERUP_TIMES[fruit.powerup]
-        fruit.respawn()
         
 
     def draw(self):

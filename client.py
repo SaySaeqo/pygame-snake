@@ -95,7 +95,7 @@ class ClientGameView(pygameview.PyGameView):
         if ClientNetworkData().predicted is None:
             return
 
-        sounds = game_loop(ClientNetworkData().predicted, delta)
+        sounds = game_loop(ClientNetworkData().predicted, delta, add_new_entities=False)
         draw_board(ClientNetworkData().predicted)
         for sound in sounds:
             pygame.mixer.Sound(f"sound/{sound}.mp3").play(maxtime=constants.SOUND_MAXTIME[sound])
@@ -144,12 +144,12 @@ class ClientNetworkListener(client_tester.ClientTester):
                     cur_tp = tp
                 if cur_tp < tp:
                     if (cur_tp - gs.time_passed) > 0:
-                        game_loop(gs, cur_tp - gs.time_passed)
+                        game_loop(gs, cur_tp - gs.time_passed, False)
                     cur_tp = tp
                 snake = find(gs.players, lambda s: s.color == color)
                 snake.decision = decision
             if current_time > gs.time_passed:
-                game_loop(gs, current_time - gs.time_passed)
+                game_loop(gs, current_time - gs.time_passed, False)
             ClientNetworkData().inputs = []
         elif ClientNetworkData().predicted is None:
             ClientNetworkData().predicted = gs
@@ -163,7 +163,6 @@ class ClientNetworkListener(client_tester.ClientTester):
             now = pygame.time.get_ticks()
             time_diff = (now - self.test) / 1000.0
             self.test = now
-            game_loop(gs, current_time - gs.time_passed)
             if (current_time - gs.time_passed) > 2* constants.NETWORK_GAME_LATENCY/ 1000:
                 constants.LOG.debug(f"2. {current_time=:.4f}\t{gs.time_passed=:.4f}\t{time_diff=:.4f}")
             ClientNetworkData().predicted = gs
