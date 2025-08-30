@@ -56,8 +56,10 @@ async def send_controls():
                 snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
                 snake.decision = decision
                 ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed))
+                DEBUG_WRITE2FILE({"color": color, "decision": decision, "time_passed": ClientNetworkData().predicted.time_passed})
 
-                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed})
+                loop_delta = 1.0/pygameview.DEFAULT_FPS
+                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed+loop_delta/8})
         await asyncio.sleep(constants.NETWORK_GAME_LATENCY / 1000)
 
 
@@ -124,22 +126,30 @@ class ClientNetworkListener(client_tester.ClientTester):
 
     def action_game(self, game_state):
         gs = GameState.deserialize(game_state)
-        DEBUG_WRITE2FILE(gs.to_json())
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.timestamp > gs.timestamp:
             return
+        
+        time_of_arrival = 0
+        if ClientNetworkData().predicted is not None:
+            time_of_arrival = ClientNetworkData().predicted.time_passed
+
+        debug2file_json = gs.to_json()
+        debug2file_json["time_of_arrival"] = time_of_arrival
+        DEBUG_WRITE2FILE(debug2file_json)
 
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.time_passed > 1:
             current_time = ClientNetworkData().predicted.time_passed
             now = pygame.time.get_ticks()
-            time_diff = (now - self.test) / 1000.0
+            from_last_msg = (now - self.test) / 1000.0
             self.test = now
             if current_time - gs.time_passed > 2 * constants.NETWORK_GAME_LATENCY / 1000:
-                constants.LOG.debug(f"3. {current_time=:.4f}\t{gs.time_passed=:.4f}\t{time_diff=:.4f}")
+                time_diff = current_time - gs.time_passed
+                constants.LOG.debug(f"3. {time_diff=:.4f}\t{from_last_msg=:.4f}")
             ClientNetworkData().predicted = gs
             if gs.time_passed < 1.0:
                 ClientNetworkData().predicted.time_passed = 1.0
             cur_tp = 0
-            for color, decision, tp in sorted(ClientNetworkData().inputs, key=lambda x: x[2]):
+            for color, decision, tp in ClientNetworkData().inputs:
                 if cur_tp == 0:
                     cur_tp = tp
                 if cur_tp < tp:
@@ -154,17 +164,18 @@ class ClientNetworkListener(client_tester.ClientTester):
         elif ClientNetworkData().predicted is None:
             ClientNetworkData().predicted = gs
             arrived_tp = gs.time_passed
-            ClientNetworkData().predicted.time_passed += constants.NETWORK_GAME_LATENCY/1000.0
+            ClientNetworkData().predicted.time_passed += 2*constants.NETWORK_GAME_LATENCY/1000.0
             current_time = ClientNetworkData().predicted.time_passed
             self.test = pygame.time.get_ticks()
             # constants.LOG.debug(f"1. {current_time=:.4f}\t{arrived_tp=:.4f}")
         else:
             current_time = ClientNetworkData().predicted.time_passed
             now = pygame.time.get_ticks()
-            time_diff = (now - self.test) / 1000.0
+            from_last_msg = (now - self.test) / 1000.0
             self.test = now
-            if (current_time - gs.time_passed) > 2* constants.NETWORK_GAME_LATENCY/ 1000:
-                constants.LOG.debug(f"2. {current_time=:.4f}\t{gs.time_passed=:.4f}\t{time_diff=:.4f}")
+            time_diff = current_time - gs.time_passed
+            if time_diff > 2* constants.NETWORK_GAME_LATENCY/ 1000:
+                constants.LOG.debug(f"2. {time_diff=:.4f}\t{from_last_msg=:.4f}")
             ClientNetworkData().predicted = gs
             ClientNetworkData().predicted.time_passed = current_time
             ClientNetworkData().inputs = []
@@ -186,7 +197,6 @@ class ClientNetworkListener(client_tester.ClientTester):
     def action_score(self, game_state):
         game_state = GameState.deserialize(game_state)
         self.controls_task.cancel()
-        DEBUG_WRITE2FILE(game_state.to_json())
         constants.LOG.info("Game over")
         pygameview.set_view(show_scores(game_state.scores, ClientNetworkData().players))
         global should_relaunch
@@ -248,43 +258,44 @@ async def run_on_playfab():
     try:
         playfab.PlayFabSettings.TitleId = "EE89E"
         playfab.PlayFabSettings.GlobalExceptionLogger = raise_error
-        # playfab.PlayFabClientAPI.LoginWithCustomID({
-        #         "CreateAccount": True,
-        #         "CustomId": "test",
-        #     }, get_playfab_result)
-        # await asyncio.sleep(0)
-        # session_id = str(uuid.uuid1())
-        # # session_id = "a1891f3a-81c6-11f0-b23f-a6a2e6ca50bc"
-        # playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-        #         "BuildId": "811f2a7a-2cd4-474b-bb42-d986ccaa9cb7",
-        #         "PreferredRegions": ["NorthEurope"],
-        #         "SessionId": session_id,
-        #     }, get_playfab_result)
-        # await asyncio.sleep(1)
-        # ports = playfab_result["Ports"]
-        # ipv4 = playfab_result["IPV4Address"]
-        # tcp_port = None
-        # udp_port = None
-        # for port in ports:
-        #     if port["Protocol"] == "TCP":
-        #         tcp_port = int(port["Num"])
-        #     else:
-        #         udp_port = int(port["Num"])
-        # constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
-        ipv4 = "192.168.1.104"
-        tcp_port = 8080
-        udp_port = 8081
+        playfab.PlayFabClientAPI.LoginWithCustomID({
+                "CreateAccount": True,
+                "CustomId": "test",
+            }, get_playfab_result)
+        await asyncio.sleep(0)
+        session_id = str(uuid.uuid1())
+        session_id = "f8c43616-8411-11f0-947d-a6a2e6ca50bc"
+        playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
+                "BuildId": "cb40a829-120d-43fd-a6cf-45de9934fc67",
+                "PreferredRegions": ["NorthEurope"],
+                "SessionId": session_id,
+            }, get_playfab_result)
+        await asyncio.sleep(1)
+        ports = playfab_result["Ports"]
+        ipv4 = playfab_result["IPV4Address"]
+        tcp_port = None
+        udp_port = None
+        for port in ports:
+            if port["Protocol"] == "TCP":
+                tcp_port = int(port["Num"])
+            else:
+                udp_port = int(port["Num"])
+        constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
+        # ipv4 = "192.168.1.104"
+        # tcp_port = 8080
+        # udp_port = 8081
 
         pygameview.close_view()
         await pygameview.wait_closed()
         await run_client(ipv4, tcp_port, udp_port)
 
-        # with net.ContextManager():
-        #     await net.connect_to_server(ipv4, tcp_port, udp_port, ClientNetworkListener())
-        #     net.send("get_logs", "100")
-        #     await asyncio.sleep(1)
+        # Printing logs from server
+        with net.ContextManager():
+            await net.connect_to_server(ipv4, tcp_port, udp_port, ClientNetworkListener())
+            net.send("get_logs", "100")
+            await asyncio.sleep(1)
 
-        # await client_tester.main(ipv4, tcp_port, udp_port)
+        await client_tester.main(ipv4, tcp_port, udp_port)
         
     except PlayfabError as e:
         constants.LOG.error(f"Playfab error: {e}")

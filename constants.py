@@ -76,4 +76,4 @@ SOUND_MAXTIME = {
     "crush": 1000
 }
 
-NETWORK_GAME_LATENCY = 100  # milliseconds
+NETWORK_GAME_LATENCY = 60  # milliseconds
