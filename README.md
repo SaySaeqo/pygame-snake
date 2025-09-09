@@ -1,77 +1,36 @@
 # Snake Game
 
-This is a Snake game project with networking capabilities. The game can be played in both host and client modes. For more info about game mechanics and current playtrough go to [Releases](https://github.com/SaySaeqo/pygame-snake/releases).
+Enhanced Snake with free movement and real time networking capabilities.
 
-## Prerequisites
+It has:
+- Local mode for up to 4 players playing on 1 computer.
+- Local network mode where 1 computer is playing role of the host and others are his client.
+- Internet mode for connecting with Playfab external server (still under construction).
+- Leaderboard saving results in `leaderboard.data` file.
+- Local configuration saved in `config.data` file.
+- Own menu system.
+- Configurable keybindings.
+- Configurable players' names.
+- Infinite mode and 1 minute mode.
+- Configurable window size.
 
-- Python 3.7 or higher
-- `pip` (Python package installer)
+While playing online, clients are adjusting to host's settings.
 
-## Setup
+It uses self-made libraries:
+- [pygameview](pygameview) for managing asynchronous pygame views (effectively making pygame asynchronous library using asyncio)
+- [gamenetwork](gamenetwork) for managing TCP and/or UDP connections - making it easy for exchanging messages. Although, it will be eventually removed since TCP and UDP protocols does not work properly along itself creating situation in which both TCP and UDP packets are being dropped more frequently ([source](https://web.archive.org/web/20160103125117/https://www.isoc.org/inet97/proceedings/F3/F3_1.HTM)). It will be replaced with [enet](https://github.com/aresch/pyenet) library.
 
-### 1. Clone the Repository
+## Releases
 
-```bash
-git clone https://github.com/SaySaeqo/pygame-snake.git
-cd pygame-snake
-```
+For stable versions and some screenshots check [releases](https://github.com/SaySaeqo/pygame-snake/releases) subpage.
 
-### 2. Create a Virtual Environment
+## Building from source
 
-Create a virtual environment to manage dependencies:
+1. Install Python 3.7 or higher.
+2. Create virtaul environment for python.
+3. Install all dependencies from `requirements.txt`.
+4. Run `snake.py`.
 
-```bash
-python -m venv venv
-```
-
-Activate the virtual environment:
-
-- On Windows:
-
-  ```bash
-  venv\Scripts\activate
-  ```
-
-- On macOS and Linux:
-
-  ```bash
-  source venv/bin/activate
-  ```
-
-### 3. Install Dependencies
-
-Install the required Python packages using `requirements.txt`:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Running the Game
-
-To run the game, execute the following command:
-
-```bash
-python snake.py
-
-```
-
-## Optional: Generate Executable with PyInstaller
-
-If you want to generate an executable for the game, you can use PyInstaller.
-
-```bash
-pyinstaller --onefile --clean snake.py
-
-```
-
-This will create a `dist` directory with the executable file `snake` (or `snake.exe` on Windows).
-
-## Additional Information
-
-- The game saves scores to `leaderboard.data`.
-- The game saves config to `config.data`.
-- The game can be played in both host and client modes.
-- The game uses asyncio for asynchronous operations.
 
 ## License
 This project is licensed under the GNU General Public License v3.0. See the LICENSE file for details.
