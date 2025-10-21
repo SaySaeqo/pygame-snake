@@ -14,6 +14,7 @@ import uuid
 import gamenetwork.client_tester as client_tester
 import json
 import os
+import math
 
 
 # find free data filename
@@ -55,12 +56,12 @@ async def send_controls():
                 decision = function()
                 snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
                 snake.decision = decision
-                ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed))
+                loop_delta_fragment = 0.0001
+                ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed - loop_delta_fragment))
                 DEBUG_WRITE2FILE({"color": color, "decision": decision, "time_passed": ClientNetworkData().predicted.time_passed})
 
-                loop_delta = 1.0/pygameview.DEFAULT_FPS
-                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed+loop_delta/8})
-        await asyncio.sleep(constants.NETWORK_GAME_LATENCY / 1000)
+                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed - loop_delta_fragment})
+        await asyncio.sleep(constants.NETWORK_GAME_LATENCY_SEC)
 
 
 class ClientLobbyView(pygameview.PyGameView):
@@ -129,59 +130,47 @@ class ClientNetworkListener(client_tester.ClientTester):
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.timestamp > gs.timestamp:
             return
         
-        time_of_arrival = 0
-        if ClientNetworkData().predicted is not None:
-            time_of_arrival = ClientNetworkData().predicted.time_passed
+        # time_of_arrival = 0
+        # if ClientNetworkData().predicted is not None:
+        #     time_of_arrival = ClientNetworkData().predicted.time_passed
 
-        debug2file_json = gs.to_json()
-        debug2file_json["time_of_arrival"] = time_of_arrival
-        DEBUG_WRITE2FILE(debug2file_json)
+        # debug2file_json = gs.to_json()
+        # debug2file_json["time_of_arrival"] = time_of_arrival
+        # DEBUG_WRITE2FILE(debug2file_json)
 
         if ClientNetworkData().predicted is not None and ClientNetworkData().predicted.time_passed > 1:
-            current_time = ClientNetworkData().predicted.time_passed
-            now = pygame.time.get_ticks()
-            from_last_msg = (now - self.test) / 1000.0
-            self.test = now
-            if current_time - gs.time_passed > 2 * constants.NETWORK_GAME_LATENCY / 1000:
-                time_diff = current_time - gs.time_passed
-                constants.LOG.debug(f"3. {time_diff=:.4f}\t{from_last_msg=:.4f}")
+            current_time = ClientNetworkData().predicted.time_passed - 0.0001
+            # now = pygame.time.get_ticks()
+            # from_last_msg = (now - self.test) / 1000.0
+            # self.test = now
+            # if current_time - gs.time_passed > 2 * constants.NETWORK_GAME_LATENCY / 1000:
+            #     time_diff = current_time - gs.time_passed
+            #     constants.LOG.debug(f"3. {time_diff=:.4f}\t{from_last_msg=:.4f}")
             ClientNetworkData().predicted = gs
+            ClientNetworkData().predicted.time_passed = current_time
+            delta_time = 1.0 / pygameview.DEFAULT_FPS
             if gs.time_passed < 1.0:
                 ClientNetworkData().predicted.time_passed = 1.0
                 ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] >= 1.0]
-            ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] > gs.time_passed - 1.0/pygameview.DEFAULT_FPS]
-            cur_tp = 0
-            for color, decision, tp in ClientNetworkData().inputs:
-                if cur_tp == 0:
-                    cur_tp = tp
-                if cur_tp < tp:
-                    if (cur_tp - gs.time_passed) > 0:
-                        game_loop(gs, cur_tp - gs.time_passed, False)
-                    cur_tp = tp
-                snake = find(gs.players, lambda s: s.color == color)
-                snake.decision = decision
-            if current_time > gs.time_passed:
-                game_loop(gs, current_time - gs.time_passed, False)
-            ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] >= current_time - constants.NETWORK_GAME_LATENCY_SEC]
-        elif ClientNetworkData().predicted is None:
-            ClientNetworkData().predicted = gs
-            arrived_tp = gs.time_passed
-            ClientNetworkData().predicted.time_passed += 2*constants.NETWORK_GAME_LATENCY/1000.0
-            current_time = ClientNetworkData().predicted.time_passed
-            self.test = pygame.time.get_ticks()
-            # constants.LOG.debug(f"1. {current_time=:.4f}\t{arrived_tp=:.4f}")
+            else:
+                ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] > gs.time_passed - delta_time]
+            # for color, decision, tp in ClientNetworkData().inputs:
+            #     # If all inputs are processed up to current state, fast-forward in units of delta_time
+            #     if tp > ClientNetworkData().predicted.time_passed:
+            #         loop_delta = math.ceil((tp - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
+            #         game_loop(ClientNetworkData().predicted, loop_delta, False)
+            #     # Else just apply the input
+            #     snake = find(gs.players, lambda s: s.color == color)
+            #     snake.decision = decision
+            # if current_time > ClientNetworkData().predicted.time_passed:
+            #     loop_delta = math.ceil((current_time - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
+            #     game_loop(ClientNetworkData().predicted, loop_delta, False)
         else:
-            current_time = ClientNetworkData().predicted.time_passed
-            now = pygame.time.get_ticks()
-            from_last_msg = (now - self.test) / 1000.0
-            self.test = now
-            time_diff = current_time - gs.time_passed
-            if time_diff > 2* constants.NETWORK_GAME_LATENCY/ 1000:
-                constants.LOG.debug(f"2. {time_diff=:.4f}\t{from_last_msg=:.4f}")
             ClientNetworkData().predicted = gs
-            ClientNetworkData().predicted.time_passed = current_time
-            ClientNetworkData().inputs = []
-
+            delta_time = 1.0 / pygameview.DEFAULT_FPS
+            loop_delta = math.ceil((2*constants.NETWORK_GAME_LATENCY_SEC)/delta_time)*delta_time
+            ClientNetworkData().predicted.time_passed += loop_delta
+            # self.test = pygame.time.get_ticks()
 
 
     def action_your_color(self, data):
@@ -266,7 +255,7 @@ async def run_on_playfab():
             }, get_playfab_result)
         await asyncio.sleep(0)
         session_id = str(uuid.uuid1())
-        session_id = "f8c43616-8411-11f0-947d-a6a2e6ca50bc"
+        session_id = "0c746976-ae9f-11f0-bad9-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
                 "BuildId": "ba614b2d-bac0-4620-8385-88f3fb4fa604",
                 "PreferredRegions": ["NorthEurope"],
@@ -283,6 +272,7 @@ async def run_on_playfab():
             else:
                 udp_port = int(port["Num"])
         constants.LOG.info(f"TCP = {tcp_port}\tUDP = {udp_port}\tIPv4 = {ipv4}\tSessionId = {session_id}")
+        print(f"SessionId = {session_id}")
         # ipv4 = "192.168.1.104"
         # tcp_port = 8080
         # udp_port = 8081

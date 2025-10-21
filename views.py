@@ -246,10 +246,10 @@ async def solo_host_game(game_state: dto.GameState):
         delta = await clock.tick(FPS)
         
         global next_controls
+        next_controls = [(a,b,c) for a,b,c in next_controls if c > game_state.time_passed - delta]
         for player, direction, time_passed in next_controls:
-            if prev_time_passed - delta < time_passed <= prev_time_passed:
+            if time_passed <= prev_time_passed:
                 player.decision = direction
-        next_controls = [(a,b,c) for a,b,c in next_controls if c > game_state.time_passed]
 
         game_loop(game_state, delta)
 
