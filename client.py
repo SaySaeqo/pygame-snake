@@ -148,6 +148,8 @@ class ClientNetworkListener(client_tester.ClientTester):
             ClientNetworkData().predicted = gs
             if gs.time_passed < 1.0:
                 ClientNetworkData().predicted.time_passed = 1.0
+                ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] >= 1.0]
+            ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] > gs.time_passed - 1.0/pygameview.DEFAULT_FPS]
             cur_tp = 0
             for color, decision, tp in ClientNetworkData().inputs:
                 if cur_tp == 0:
@@ -160,7 +162,7 @@ class ClientNetworkListener(client_tester.ClientTester):
                 snake.decision = decision
             if current_time > gs.time_passed:
                 game_loop(gs, current_time - gs.time_passed, False)
-            ClientNetworkData().inputs = []
+            ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] >= current_time - constants.NETWORK_GAME_LATENCY_SEC]
         elif ClientNetworkData().predicted is None:
             ClientNetworkData().predicted = gs
             arrived_tp = gs.time_passed
@@ -266,7 +268,7 @@ async def run_on_playfab():
         session_id = str(uuid.uuid1())
         session_id = "f8c43616-8411-11f0-947d-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "cb40a829-120d-43fd-a6cf-45de9934fc67",
+                "BuildId": "ba614b2d-bac0-4620-8385-88f3fb4fa604",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": session_id,
             }, get_playfab_result)
