@@ -74,3 +74,13 @@ message GameState {
   float last_delta = 11;
   int32 numbering = 12;
 }
+
+message GameInput {
+  string name = 1;
+  Decision decision = 2;
+  float time_passed = 3;
+}
+
+message GameInputs {
+  repeated GameInput controls = 1;
+}

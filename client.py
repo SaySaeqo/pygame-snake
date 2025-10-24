@@ -4,7 +4,7 @@ from utils import *
 from views import *
 import pygameview
 from dataclasses import dataclass, field
-from dto import Config, GameState
+from dto import Config, GameState, GameInputs
 import constants
 import pygameutils
 import playfab
@@ -52,12 +52,13 @@ should_relaunch = True
 async def send_controls():
     while True:
         if ClientNetworkData().inputs_sended_idx < 0:
-            ctrls = []
+            ctrls = GameInputs()
             for game_input in ClientNetworkData().inputs[ClientNetworkData().inputs_sended_idx:]:
                 color, decision, time_passed = game_input
                 name = find(ClientNetworkData().my_colors.keys(), lambda n: ClientNetworkData().my_colors[n] == color)
-                ctrls.append({"name": name, "direction": decision, "time_passed": time_passed})
-            net.send_udp("control", { "ctrls" : ctrls })
+
+                ctrls.append(name, decision, time_passed)
+            net.send_udp("control", ctrls.serialize())
             ClientNetworkData().inputs_sended_idx = 0
         await asyncio.sleep(constants.NETWORK_GAME_LATENCY_SEC)
 
@@ -266,7 +267,7 @@ async def run_on_playfab():
         session_id = str(uuid.uuid1())
         session_id = "0c746976-ae9f-11f0-bad9-a6a2e6ca50bc"
         playfab.PlayFabMultiplayerAPI.RequestMultiplayerServer({
-                "BuildId": "ba614b2d-bac0-4620-8385-88f3fb4fa604",
+                "BuildId": "c7ae8a5e-3c19-4932-88e9-2591c412a103",
                 "PreferredRegions": ["NorthEurope"],
                 "SessionId": session_id,
             }, get_playfab_result)

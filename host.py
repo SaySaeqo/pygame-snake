@@ -28,11 +28,22 @@ class HostNetworkListener(server_tester.ServerTester):
             pass
 
     def action_control(self, data):
-        if "ctrls" in data:
-            for ctrl in data["ctrls"]:
-                self._add_control(ctrl)
+        if isinstance(data, dict):
+            if "ctrls" in data:
+                for ctrl in data["ctrls"]:
+                    self._add_control(ctrl)
+            else:
+                self._add_control(data)
         else:
-            self._add_control(data)
+            controls = dto.GameInputs.deserialize(data).controls
+            for control in controls:
+                try:
+                    idx = utils.find_index(self.players, lambda x: x[0] == control.name and x[1] == self._id)
+                    player = self.game_state.players[idx]
+                    if self.game_state.time_passed < control.time_passed:
+                        add_control(player, control.decision, control.time_passed)
+                except StopIteration:
+                    pass
 
     def disconnected(self):
         constants.LOG.info("Player disconnected")

@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tdto.proto\x12\tsnakegame\"\x1f\n\x07Vector2\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"N\n\x04Tail\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12%\n\tdirection\x18\x04 \x01(\x0b\x32\x12.snakegame.Vector2\")\n\x06\x43ircle\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\"M\n\x05\x46ruit\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12#\n\x07powerup\x18\x04 \x01(\x0e\x32\x12.snakegame.Powerup\"\xae\x02\n\x05Snake\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12%\n\x08\x64\x65\x63ision\x18\x04 \x01(\x0e\x32\x13.snakegame.Decision\x12%\n\tdirection\x18\x05 \x01(\x0b\x32\x12.snakegame.Vector2\x12\x16\n\x0erotation_power\x18\x06 \x01(\x05\x12\r\n\x05\x61live\x18\x07 \x01(\x08\x12\x1d\n\x04tail\x18\x08 \x03(\x0b\x32\x0f.snakegame.Tail\x12\r\n\x05\x63olor\x18\t \x03(\r\x12\x30\n\x08powerups\x18\n \x03(\x0b\x32\x1e.snakegame.Snake.PowerupsEntry\x1a/\n\rPowerupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02:\x02\x38\x01\"\xbf\x02\n\tGameState\x12!\n\x07players\x18\x01 \x03(\x0b\x32\x10.snakegame.Snake\x12 \n\x06\x66ruits\x18\x02 \x03(\x0b\x32\x10.snakegame.Fruit\x12 \n\x05walls\x18\x03 \x03(\x0b\x32\x11.snakegame.Circle\x12\x13\n\x0btime_passed\x18\x04 \x01(\x02\x12\x19\n\x11\x66ruit_event_timer\x18\x05 \x01(\x02\x12\x18\n\x10wall_event_timer\x18\x06 \x01(\x02\x12 \n\x18wall_walking_event_timer\x18\x07 \x01(\x02\x12\x15\n\rcurrent_speed\x18\x08 \x01(\x05\x12\x0e\n\x06scores\x18\t \x03(\x05\x12\x11\n\ttimestamp\x18\n \x01(\x01\x12\x12\n\nlast_delta\x18\x0b \x01(\x02\x12\x11\n\tnumbering\x18\x0c \x01(\x05*T\n\x07Powerup\x12\x08\n\x04NONE\x10\x00\x12\x10\n\x0cWALL_WALKING\x10\x01\x12\x0c\n\x08\x43RUSHING\x10\x02\x12\x11\n\rWEIRD_WALKING\x10\x03\x12\x0c\n\x08GHOSTING\x10\x04*,\n\x08\x44\x65\x63ision\x12\x0b\n\x07\x46ORWARD\x10\x00\x12\x08\n\x04LEFT\x10\x01\x12\t\n\x05RIGHT\x10\x02\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tdto.proto\x12\tsnakegame\"\x1f\n\x07Vector2\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\"N\n\x04Tail\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12%\n\tdirection\x18\x04 \x01(\x0b\x32\x12.snakegame.Vector2\")\n\x06\x43ircle\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\"M\n\x05\x46ruit\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12#\n\x07powerup\x18\x04 \x01(\x0e\x32\x12.snakegame.Powerup\"\xae\x02\n\x05Snake\x12\t\n\x01x\x18\x01 \x01(\x02\x12\t\n\x01y\x18\x02 \x01(\x02\x12\t\n\x01r\x18\x03 \x01(\x02\x12%\n\x08\x64\x65\x63ision\x18\x04 \x01(\x0e\x32\x13.snakegame.Decision\x12%\n\tdirection\x18\x05 \x01(\x0b\x32\x12.snakegame.Vector2\x12\x16\n\x0erotation_power\x18\x06 \x01(\x05\x12\r\n\x05\x61live\x18\x07 \x01(\x08\x12\x1d\n\x04tail\x18\x08 \x03(\x0b\x32\x0f.snakegame.Tail\x12\r\n\x05\x63olor\x18\t \x03(\r\x12\x30\n\x08powerups\x18\n \x03(\x0b\x32\x1e.snakegame.Snake.PowerupsEntry\x1a/\n\rPowerupsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02:\x02\x38\x01\"\xbf\x02\n\tGameState\x12!\n\x07players\x18\x01 \x03(\x0b\x32\x10.snakegame.Snake\x12 \n\x06\x66ruits\x18\x02 \x03(\x0b\x32\x10.snakegame.Fruit\x12 \n\x05walls\x18\x03 \x03(\x0b\x32\x11.snakegame.Circle\x12\x13\n\x0btime_passed\x18\x04 \x01(\x02\x12\x19\n\x11\x66ruit_event_timer\x18\x05 \x01(\x02\x12\x18\n\x10wall_event_timer\x18\x06 \x01(\x02\x12 \n\x18wall_walking_event_timer\x18\x07 \x01(\x02\x12\x15\n\rcurrent_speed\x18\x08 \x01(\x05\x12\x0e\n\x06scores\x18\t \x03(\x05\x12\x11\n\ttimestamp\x18\n \x01(\x01\x12\x12\n\nlast_delta\x18\x0b \x01(\x02\x12\x11\n\tnumbering\x18\x0c \x01(\x05\"U\n\tGameInput\x12\x0c\n\x04name\x18\x01 \x01(\t\x12%\n\x08\x64\x65\x63ision\x18\x02 \x01(\x0e\x32\x13.snakegame.Decision\x12\x13\n\x0btime_passed\x18\x03 \x01(\x02\"4\n\nGameInputs\x12&\n\x08\x63ontrols\x18\x01 \x03(\x0b\x32\x14.snakegame.GameInput*T\n\x07Powerup\x12\x08\n\x04NONE\x10\x00\x12\x10\n\x0cWALL_WALKING\x10\x01\x12\x0c\n\x08\x43RUSHING\x10\x02\x12\x11\n\rWEIRD_WALKING\x10\x03\x12\x0c\n\x08GHOSTING\x10\x04*,\n\x08\x44\x65\x63ision\x12\x0b\n\x07\x46ORWARD\x10\x00\x12\x08\n\x04LEFT\x10\x01\x12\t\n\x05RIGHT\x10\x02\x62\x06proto3')
 
 _POWERUP = DESCRIPTOR.enum_types_by_name['Powerup']
 Powerup = enum_type_wrapper.EnumTypeWrapper(_POWERUP)
@@ -38,6 +38,8 @@ _FRUIT = DESCRIPTOR.message_types_by_name['Fruit']
 _SNAKE = DESCRIPTOR.message_types_by_name['Snake']
 _SNAKE_POWERUPSENTRY = _SNAKE.nested_types_by_name['PowerupsEntry']
 _GAMESTATE = DESCRIPTOR.message_types_by_name['GameState']
+_GAMEINPUT = DESCRIPTOR.message_types_by_name['GameInput']
+_GAMEINPUTS = DESCRIPTOR.message_types_by_name['GameInputs']
 Vector2 = _reflection.GeneratedProtocolMessageType('Vector2', (_message.Message,), {
   'DESCRIPTOR' : _VECTOR2,
   '__module__' : 'dto_pb2'
@@ -88,15 +90,29 @@ GameState = _reflection.GeneratedProtocolMessageType('GameState', (_message.Mess
   })
 _sym_db.RegisterMessage(GameState)
 
+GameInput = _reflection.GeneratedProtocolMessageType('GameInput', (_message.Message,), {
+  'DESCRIPTOR' : _GAMEINPUT,
+  '__module__' : 'dto_pb2'
+  # @@protoc_insertion_point(class_scope:snakegame.GameInput)
+  })
+_sym_db.RegisterMessage(GameInput)
+
+GameInputs = _reflection.GeneratedProtocolMessageType('GameInputs', (_message.Message,), {
+  'DESCRIPTOR' : _GAMEINPUTS,
+  '__module__' : 'dto_pb2'
+  # @@protoc_insertion_point(class_scope:snakegame.GameInputs)
+  })
+_sym_db.RegisterMessage(GameInputs)
+
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _SNAKE_POWERUPSENTRY._options = None
   _SNAKE_POWERUPSENTRY._serialized_options = b'8\001'
-  _POWERUP._serialized_start=886
-  _POWERUP._serialized_end=970
-  _DECISION._serialized_start=972
-  _DECISION._serialized_end=1016
+  _POWERUP._serialized_start=1027
+  _POWERUP._serialized_end=1111
+  _DECISION._serialized_start=1113
+  _DECISION._serialized_end=1157
   _VECTOR2._serialized_start=24
   _VECTOR2._serialized_end=55
   _TAIL._serialized_start=57
@@ -111,4 +127,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _SNAKE_POWERUPSENTRY._serialized_end=562
   _GAMESTATE._serialized_start=565
   _GAMESTATE._serialized_end=884
+  _GAMEINPUT._serialized_start=886
+  _GAMEINPUT._serialized_end=971
+  _GAMEINPUTS._serialized_start=973
+  _GAMEINPUTS._serialized_end=1025
 # @@protoc_insertion_point(module_scope)

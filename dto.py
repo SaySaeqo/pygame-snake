@@ -164,6 +164,38 @@ class GameState:
         packed.ParseFromString(data)
         return cls.from_json(json_format.MessageToDict(packed, preserving_proto_field_name=True))
     
+@dataclass
+class GameInput:
+    name: str
+    decision: int
+    time_passed: float
+
+@dataclass
+class GameInputs:
+    controls: list[GameInput] = field(default_factory=list)
+
+    def append(self, name, decision, time_passed):
+        self.controls.append(GameInput(name, decision, time_passed))
+
+    def serialize(self):
+        packed = dto_pb2.GameInputs()
+        json_format.ParseDict(asdict(self), packed)
+        return packed.SerializeToString()
+    
+    @classmethod
+    def deserialize(cls, data):
+        packed = dto_pb2.GameInputs()
+        packed.ParseFromString(data)
+        dict_data = json_format.MessageToDict(packed, preserving_proto_field_name=True)
+        controls = []
+        for control in dict_data.get("controls", []):
+            controls.append(GameInput(
+                name=control["name"],
+                decision=int(control["decision"]),
+                time_passed=float(control["time_passed"])
+            ))
+        return cls(controls=controls)
+    
 if __name__ == "__main__":
     # Testing serialization
     import pprint
