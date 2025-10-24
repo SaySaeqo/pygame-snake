@@ -154,17 +154,17 @@ class ClientNetworkListener(client_tester.ClientTester):
                 ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] >= 1.0]
             else:
                 ClientNetworkData().inputs = [inp for inp in ClientNetworkData().inputs if inp[2] > gs.time_passed - delta_time]
-            # for color, decision, tp in ClientNetworkData().inputs:
-            #     # If all inputs are processed up to current state, fast-forward in units of delta_time
-            #     if tp > ClientNetworkData().predicted.time_passed:
-            #         loop_delta = math.ceil((tp - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
-            #         game_loop(ClientNetworkData().predicted, loop_delta, False)
-            #     # Else just apply the input
-            #     snake = find(gs.players, lambda s: s.color == color)
-            #     snake.decision = decision
-            # if current_time > ClientNetworkData().predicted.time_passed:
-            #     loop_delta = math.ceil((current_time - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
-            #     game_loop(ClientNetworkData().predicted, loop_delta, False)
+            for color, decision, tp in ClientNetworkData().inputs:
+                # If all inputs are processed up to current state, fast-forward in units of delta_time
+                if tp > ClientNetworkData().predicted.time_passed:
+                    loop_delta = math.ceil((tp - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
+                    game_loop(ClientNetworkData().predicted, loop_delta, False)
+                # Else just apply the input
+                snake = find(gs.players, lambda s: s.color == color)
+                snake.decision = decision
+            if current_time > ClientNetworkData().predicted.time_passed:
+                loop_delta = math.ceil((current_time - ClientNetworkData().predicted.time_passed)/delta_time)*delta_time
+                game_loop(ClientNetworkData().predicted, loop_delta, False)
         else:
             ClientNetworkData().predicted = gs
             delta_time = 1.0 / pygameview.DEFAULT_FPS
