@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, asdict
 from constants import *
-from decisionfunctions import based_on_keys
+from decisionfunctions import based_on_keys, Direction
 from gameobjects import *
 import utils
 import pygameutils
@@ -190,9 +190,9 @@ class GameInputs:
         controls = []
         for control in dict_data.get("controls", []):
             controls.append(GameInput(
-                name=control["name"],
-                decision=int(control["decision"]),
-                time_passed=float(control["time_passed"])
+                name=control.get("name", ""),
+                decision=int(control.get("decision", Direction.FORWARD)),
+                time_passed=float(control.get("time_passed", 0.0))
             ))
         return cls(controls=controls)
     
