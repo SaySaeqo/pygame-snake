@@ -45,22 +45,20 @@ class ClientNetworkData:
     predicted: GameState = None
     my_colors: dict = field(default_factory=dict)
     inputs: list = field(default_factory=list)
+    inputs_sended_idx: int = 0
 
 should_relaunch = True
 
 async def send_controls():
     while True:
-        for name, function in zip(Config().active_players_names, Config().control_functions):
-            if ClientNetworkData().predicted and name in ClientNetworkData().my_colors:
-                color = ClientNetworkData().my_colors[name]
-                decision = function()
-                snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
-                snake.decision = decision
-                loop_delta_fragment = 0.0001
-                ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed - loop_delta_fragment))
-                DEBUG_WRITE2FILE({"color": color, "decision": decision, "time_passed": ClientNetworkData().predicted.time_passed})
-
-                net.send_udp("control", {"name": name, "direction": decision, "time_passed": ClientNetworkData().predicted.time_passed - loop_delta_fragment})
+        if ClientNetworkData().inputs_sended_idx < 0:
+            ctrls = []
+            for game_input in ClientNetworkData().inputs[ClientNetworkData().inputs_sended_idx:]:
+                color, decision, time_passed = game_input
+                name = find(ClientNetworkData().my_colors.keys(), lambda n: ClientNetworkData().my_colors[n] == color)
+                ctrls.append({"name": name, "direction": decision, "time_passed": time_passed})
+            net.send_udp("control", { "ctrls" : ctrls })
+            ClientNetworkData().inputs_sended_idx = 0
         await asyncio.sleep(constants.NETWORK_GAME_LATENCY_SEC)
 
 
@@ -97,6 +95,17 @@ class ClientGameView(pygameview.PyGameView):
     def update(self, delta):
         if ClientNetworkData().predicted is None:
             return
+        
+        for name, function in zip(Config().active_players_names, Config().control_functions):
+            if ClientNetworkData().predicted and name in ClientNetworkData().my_colors:
+                color = ClientNetworkData().my_colors[name]
+                decision = function()
+                snake = find(ClientNetworkData().predicted.players, lambda s: s.color == color)
+                snake.decision = decision
+                loop_delta_fragment = 0.0001
+                ClientNetworkData().inputs.append((color, decision, ClientNetworkData().predicted.time_passed - loop_delta_fragment))
+                ClientNetworkData().inputs_sended_idx -= 1
+                DEBUG_WRITE2FILE({"color": color, "decision": decision, "time_passed": ClientNetworkData().predicted.time_passed})
 
         sounds = game_loop(ClientNetworkData().predicted, delta, add_new_entities=False)
         draw_board(ClientNetworkData().predicted)

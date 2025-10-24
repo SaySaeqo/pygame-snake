@@ -18,7 +18,7 @@ class HostNetworkListener(server_tester.ServerTester):
         new_players = [[name, self._id] for name in names]
         self.players.extend(new_players)
 
-    def action_control(self, data):
+    def _add_control(self, data):
         try:
             idx = utils.find_index(self.players, lambda x: x[0] == data["name"] and x[1] == self._id)
             player = self.game_state.players[idx]
@@ -26,6 +26,13 @@ class HostNetworkListener(server_tester.ServerTester):
                 add_control(player, data["direction"], data["time_passed"])
         except StopIteration:
             pass
+
+    def action_control(self, data):
+        if "ctrls" in data:
+            for ctrl in data["ctrls"]:
+                self._add_control(ctrl)
+        else:
+            self._add_control(data)
 
     def disconnected(self):
         constants.LOG.info("Player disconnected")
