@@ -185,6 +185,8 @@ class GameInputs:
     @classmethod
     def deserialize(cls, data):
         packed = dto_pb2.GameInputs()
+        if data is None:
+            return cls()
         packed.ParseFromString(data)
         dict_data = json_format.MessageToDict(packed, preserving_proto_field_name=True)
         controls = []
