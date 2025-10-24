@@ -191,8 +191,8 @@ class GameInputs:
         for control in dict_data.get("controls", []):
             controls.append(GameInput(
                 name=control.get("name", ""),
-                decision=int(control.get("decision", Direction.FORWARD)),
-                time_passed=float(control.get("time_passed", 0.0))
+                decision=control.get("decision", Direction.FORWARD),
+                time_passed=control.get("time_passed", 0.0)
             ))
         return cls(controls=controls)
     

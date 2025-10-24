@@ -39,18 +39,12 @@ message Fruit {
   Powerup powerup = 4;
 }
 
-enum Decision {
-  FORWARD = 0;
-  LEFT = 1;
-  RIGHT = 2;
-}
-
 // Snake object
 message Snake {
   float x = 1;
   float y = 2;
   float r = 3;
-  Decision decision = 4;
+  int32 decision = 4;
   Vector2 direction = 5;
   int32 rotation_power = 6;
   bool alive = 7;
@@ -77,7 +71,7 @@ message GameState {
 
 message GameInput {
   string name = 1;
-  Decision decision = 2;
+  int32 decision = 2;
   float time_passed = 3;
 }
 
